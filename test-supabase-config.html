@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Supabase Config</title>
+</head>
+<body>
+  <h1>Testing Supabase Configuration</h1>
+  <button id="testBtn">Test Get Supabase Config</button>
+  <pre id="output"></pre>
+
+  <script>
+    const output = document.getElementById('output');
+    const testBtn = document.getElementById('testBtn');
+
+    testBtn.addEventListener('click', async () => {
+      output.textContent = 'Testing...\n';
+      
+      try {
+        const config = await window.electronAPI.getSupabaseConfig();
+        output.textContent += '\nResult:\n' + JSON.stringify(config, null, 2);
+        
+        if (config.success) {
+          output.textContent += '\n\n✅ SUCCESS!';
+          output.textContent += '\n- URL exists: ' + !!config.url;
+          output.textContent += '\n- Key exists: ' + !!config.anonKey;
+          if (config.url) {
+            output.textContent += '\n- URL preview: ' + config.url.substring(0, 30) + '...';
+          }
+        } else {
+          output.textContent += '\n\n❌ FAILED: ' + config.error;
+        }
+      } catch (error) {
+        output.textContent += '\n\n❌ ERROR: ' + error.message;
+        console.error(error);
+      }
+    });
+
+    // Auto-run on load
+    window.addEventListener('DOMContentLoaded', () => {
+      testBtn.click();
+    });
+  </script>
+</body>
+</html>
+

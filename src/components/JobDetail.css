@@ -1,0 +1,393 @@
+.job-detail-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.job-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0.5rem;
+  transition: color 0.2s;
+}
+
+.back-button:hover {
+  color: #000;
+}
+
+.job-header-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.job-header-info h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.job-number {
+  font-size: 1rem;
+  color: #666;
+  padding: 0.25rem 0.75rem;
+  background: #f3f4f6;
+  border-radius: 0.375rem;
+}
+
+/* Job Info Card */
+.job-info-card {
+  background: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.info-row {
+  display: flex;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #374151;
+  min-width: 120px;
+}
+
+.info-value {
+  color: #6b7280;
+  flex: 1;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.status-in-progress,
+.status-in_progress {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* Linked Reports Section */
+.linked-reports-section {
+  background: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.add-asset-button {
+  background: #f26722;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.add-asset-button:hover {
+  background: #e55611;
+}
+
+/* Template Menu */
+.template-menu {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.template-menu-header {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.template-search {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.close-menu-button {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.close-menu-button:hover {
+  background: #dc2626;
+}
+
+.template-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.template-category {
+  background: white;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.category-title {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.template-item {
+  text-align: left;
+  background: white;
+  border: 1px solid #e5e7eb;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.template-item:hover {
+  background: #f9fafb;
+  border-color: #f26722;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.template-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.template-badge.ats {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.template-badge.mts {
+  background: #fce7f3;
+  color: #9f1239;
+}
+
+.no-results {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+}
+
+/* Reports List */
+.empty-reports {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+}
+
+.empty-reports p {
+  margin: 0.5rem 0;
+}
+
+.empty-reports .hint {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.reports-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.report-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.report-card:hover {
+  border-color: #f26722;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.report-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 0.75rem;
+}
+
+.report-card-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.report-status {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+/* Asset/Report statuses */
+.report-status.status-not_started,
+.report-status.status-not.started {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.report-status.status-in_progress,
+.report-status.status-in-progress {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.report-status.status-ready_for_review,
+.report-status.status-ready-for-review {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.report-status.status-approved {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.report-status.status-sent {
+  background: #c7d2fe;
+  color: #3730a3;
+}
+
+.report-status.status-issue {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.report-status.status-archived {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+/* Legacy statuses for technical_reports */
+.report-status.status-draft {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.report-status.status-submitted {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.report-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.report-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.report-type {
+  font-weight: 500;
+}
+
+.report-date {
+  font-size: 0.75rem;
+}
+
+/* Loading and Error States */
+.loading,
+.error {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+}
+
+.error {
+  color: #ef4444;
+}
+
