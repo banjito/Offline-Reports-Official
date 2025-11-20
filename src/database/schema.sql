@@ -244,6 +244,26 @@ INSERT OR IGNORE INTO app_settings (key, value) VALUES
   ('api_base_url', NULL);
 
 -- ============================================================================
+-- CUSTOM FORM TEMPLATES (Report schemas with field configs, dropdowns, etc.)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS custom_form_templates (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  neta_section TEXT,
+  created_by TEXT,
+  structure JSON NOT NULL,  -- Contains sections with field types, dropdown options, validation
+  is_active BOOLEAN DEFAULT 1,
+  last_sync_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_custom_form_templates_active ON custom_form_templates(is_active);
+CREATE INDEX IF NOT EXISTS idx_custom_form_templates_name ON custom_form_templates(name);
+
+-- ============================================================================
 -- CONFLICT RESOLUTION
 -- ============================================================================
 

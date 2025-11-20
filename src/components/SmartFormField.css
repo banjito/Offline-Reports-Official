@@ -1,0 +1,105 @@
+.field-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.field-label {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-align: right;
+  padding-right: 1rem;
+}
+
+.field-value {
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  font-size: 0.9rem;
+  color: #111827;
+  white-space: pre-wrap;
+}
+
+.field-input,
+.field-select,
+.field-textarea {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.9rem;
+  color: #111827;
+  background-color: white;
+  transition: all 0.15s ease;
+  width: 100%;
+  max-width: 100%;
+}
+
+.field-input:focus,
+.field-select:focus,
+.field-textarea:focus {
+  outline: none;
+  border-color: #f26722;
+  box-shadow: 0 0 0 3px rgba(242, 103, 34, 0.1);
+}
+
+.field-select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+  appearance: none;
+}
+
+.unit-select {
+  max-width: 300px;
+}
+
+.field-textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+  grid-column: 2;
+}
+
+.number-input {
+  max-width: 250px;
+}
+
+.date-input {
+  max-width: 250px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .field-label {
+    color: #9ca3af;
+  }
+  
+  .field-value {
+    color: #e5e7eb;
+  }
+  
+  .field-input,
+  .field-select,
+  .field-textarea {
+    background-color: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+  
+  .field-input:focus,
+  .field-select:focus,
+  .field-textarea:focus {
+    border-color: #f26722;
+    box-shadow: 0 0 0 3px rgba(242, 103, 34, 0.2);
+  }
+  
+  .field-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  }
+}
+

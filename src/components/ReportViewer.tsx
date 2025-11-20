@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { StructuredReportRenderer } from './StructuredReportRenderer';
+import { applyReportFormulas, calculateTCF } from '../utils/reportFormulas';
 import './ReportViewer.css';
 
 interface ReportData {
@@ -27,12 +29,13 @@ export function ReportViewer() {
     }
   }, [reportId]);
 
+
   const loadReport = async () => {
     try {
       setLoading(true);
       console.log('🔍 Loading report with ID:', reportId);
       
-      const result = await window.electronAPI.dbQuery('reports', 'getById', { id: reportId });
+      const result = await window.electronAPI.dbQuery('technical_reports', 'getById', { id: reportId });
       
       if (result.success && result.data) {
         const reportRecord = result.data;
@@ -43,8 +46,12 @@ export function ReportViewer() {
           ? JSON.parse(reportRecord.report_data) 
           : reportRecord.report_data;
         
-        setReportData(parsedData);
+        // Apply formulas (TCF corrections, etc.)
+        const dataWithFormulas = applyReportFormulas(parsedData);
+        
+        setReportData(dataWithFormulas);
         console.log('✅ Report loaded successfully:', reportRecord.title);
+        console.log('📊 Report data structure:', JSON.stringify(parsedData, null, 2));
       } else {
         console.error('❌ Report not found in technical_reports table');
         console.log('💡 This might be a placeholder asset or the report needs to be synced');
@@ -87,7 +94,7 @@ export function ReportViewer() {
         updated_at: new Date().toISOString(),
       };
 
-      const result = await window.electronAPI.dbQuery('reports', 'updateReport', updateData);
+      const result = await window.electronAPI.dbQuery('technical_reports', 'updateReport', updateData);
       
       if (result.success) {
         alert('Report saved successfully!');
@@ -102,69 +109,8 @@ export function ReportViewer() {
     }
   };
 
-  const renderField = (key: string, value: any, path: string = ''): React.ReactNode => {
-    const fullPath = path ? `${path}.${key}` : key;
-
-    if (value === null || value === undefined) {
-      return null;
-    }
-
-    if (typeof value === 'object' && !Array.isArray(value)) {
-      return (
-        <div key={fullPath} className="report-section">
-          <h3 className="section-title">{formatKey(key)}</h3>
-          <div className="section-content">
-            {Object.entries(value).map(([k, v]) => renderField(k, v, fullPath))}
-          </div>
-        </div>
-      );
-    }
-
-    if (Array.isArray(value)) {
-      return (
-        <div key={fullPath} className="report-array">
-          <h4 className="array-title">{formatKey(key)}</h4>
-          <div className="array-content">
-            {value.map((item, index) => (
-              <div key={`${fullPath}[${index}]`} className="array-item">
-                {typeof item === 'object' ? (
-                  Object.entries(item).map(([k, v]) => renderField(k, v, `${fullPath}[${index}]`))
-                ) : (
-                  <div className="field-row">
-                    <span className="field-value">{String(item)}</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    // Primitive value
-    return (
-      <div key={fullPath} className="field-row">
-        <label className="field-label">{formatKey(key)}:</label>
-        {isEditMode ? (
-          <input
-            type="text"
-            value={String(value)}
-            onChange={(e) => updateFieldValue(fullPath, e.target.value)}
-            className="field-input"
-          />
-        ) : (
-          <span className="field-value">{String(value)}</span>
-        )}
-      </div>
-    );
-  };
-
-  const formatKey = (key: string): string => {
-    return key
-      .replace(/_/g, ' ')
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
-      .trim();
+  const handleFieldChange = (path: string, value: any) => {
+    updateFieldValue(path, value);
   };
 
   const formatReportType = (reportType: string): string => {
@@ -178,21 +124,108 @@ export function ReportViewer() {
   };
 
   const updateFieldValue = (path: string, value: any) => {
-    const keys = path.split('.');
+    const keys = path.split(/[\.\[\]]+/).filter(k => k); // Handle both dot notation and array indices
     const newData = { ...reportData };
-    let current = newData;
+    let current: any = newData;
 
+    // Navigate to the parent of the field we're updating
     for (let i = 0; i < keys.length - 1; i++) {
       const key = keys[i];
       if (!current[key]) {
-        current[key] = {};
+        // Check if next key is a number (array index)
+        const nextKey = keys[i + 1];
+        current[key] = /^\d+$/.test(nextKey) ? [] : {};
       }
       current = current[key];
     }
 
     const lastKey = keys[keys.length - 1];
     current[lastKey] = value;
-    setReportData(newData);
+
+    // Special handling for temperature conversions
+    if (path.includes('fahrenheit') || path.includes('temperature.fahrenheit')) {
+      const fahrenheit = parseFloat(value);
+      if (!isNaN(fahrenheit)) {
+        const celsius = Math.round(((fahrenheit - 32) * 5 / 9) * 10) / 10;
+        
+        // Find the temperature object in the path
+        const tempPath = path.substring(0, path.lastIndexOf('.'));
+        const tempKeys = tempPath.split(/[\.\[\]]+/).filter(k => k);
+        let tempObj: any = newData;
+        for (const k of tempKeys) {
+          tempObj = tempObj[k];
+        }
+        
+        if (tempObj) {
+          tempObj.celsius = celsius;
+          
+          // Calculate TCF based on celsius
+          const tcf = calculateTCF(celsius);
+          tempObj.tcf = tcf;
+        }
+      }
+    }
+    
+    // Special handling for celsius conversions
+    if (path.includes('celsius') || path.includes('temperature.celsius')) {
+      const celsius = parseFloat(value);
+      if (!isNaN(celsius)) {
+        const fahrenheit = Math.round((celsius * 9 / 5 + 32) * 10) / 10;
+        
+        // Find the temperature object in the path
+        const tempPath = path.substring(0, path.lastIndexOf('.'));
+        const tempKeys = tempPath.split(/[\.\[\]]+/).filter(k => k);
+        let tempObj: any = newData;
+        for (const k of tempKeys) {
+          tempObj = tempObj[k];
+        }
+        
+        if (tempObj) {
+          tempObj.fahrenheit = fahrenheit;
+          
+          // Calculate TCF based on celsius
+          const tcf = calculateTCF(celsius);
+          tempObj.tcf = tcf;
+        }
+      }
+    }
+
+    // Apply formulas after updating (TCF corrections, etc.)
+    const dataWithFormulas = applyReportFormulas(newData);
+    setReportData(dataWithFormulas);
+  };
+
+  // Temperature Correction Factor calculation
+  const calculateTCF = (celsius: number): number => {
+    // TCF table based on NETA standards
+    const tcfTable: { [key: number]: number } = {
+      0: 0.25, 5: 0.33, 10: 0.45, 15: 0.63, 20: 1.0,
+      25: 1.25, 30: 1.66, 35: 2.0, 40: 2.5, 45: 3.0,
+      50: 4.0, 55: 5.0, 60: 6.0
+    };
+    
+    // Find exact match or interpolate
+    if (tcfTable[celsius]) {
+      return tcfTable[celsius];
+    }
+    
+    // Find surrounding values for interpolation
+    const temps = Object.keys(tcfTable).map(Number).sort((a, b) => a - b);
+    let lower = temps[0];
+    let upper = temps[temps.length - 1];
+    
+    for (let i = 0; i < temps.length - 1; i++) {
+      if (celsius >= temps[i] && celsius <= temps[i + 1]) {
+        lower = temps[i];
+        upper = temps[i + 1];
+        break;
+      }
+    }
+    
+    // Linear interpolation
+    const ratio = (celsius - lower) / (upper - lower);
+    const tcf = tcfTable[lower] + ratio * (tcfTable[upper] - tcfTable[lower]);
+    return Math.round(tcf * 100) / 100;
   };
 
   if (loading) {
@@ -255,17 +288,19 @@ export function ReportViewer() {
           </div>
         </div>
 
-        <div className="report-data">
-          {Object.entries(reportData).map(([key, value]) => renderField(key, value))}
-        </div>
-
-        {Object.keys(reportData).length === 0 && (
+        {Object.keys(reportData).length === 0 ? (
           <div className="empty-report">
             <p>This report has no data yet</p>
             <button onClick={() => setIsEditMode(true)} className="btn-primary">
               Start Editing
             </button>
           </div>
+        ) : (
+          <StructuredReportRenderer
+            data={reportData}
+            isEditMode={isEditMode}
+            onFieldChange={handleFieldChange}
+          />
         )}
       </div>
     </div>

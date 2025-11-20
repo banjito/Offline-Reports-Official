@@ -1,0 +1,213 @@
+.structured-report {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.fields-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.table-container {
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border: 1px solid #e5e7eb;
+}
+
+.data-table thead {
+  background: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.data-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #374151;
+  border-right: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.data-table th:last-child {
+  border-right: none;
+}
+
+.data-table td {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+  vertical-align: top;
+}
+
+.data-table td:last-child {
+  border-right: none;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+/* Override SmartFormField styles within tables */
+.data-table .field-row {
+  grid-template-columns: 1fr;
+  margin-bottom: 0;
+  gap: 0;
+}
+
+.data-table .field-label {
+  display: none; /* Hide labels in table cells */
+}
+
+.data-table .field-input,
+.data-table .field-select,
+.data-table .field-textarea {
+  width: 100%;
+  max-width: none;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 0.25rem;
+  min-height: 36px;
+}
+
+.data-table .field-value {
+  width: 100%;
+  max-width: none;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: none;
+  background: transparent;
+}
+
+.data-table .field-input:focus,
+.data-table .field-select:focus,
+.data-table .field-textarea:focus {
+  outline: none;
+  border-color: #f26722;
+  box-shadow: 0 0 0 3px rgba(242, 103, 34, 0.1);
+  background: white;
+}
+
+.data-table td {
+  padding: 0.25rem;
+}
+
+.nested-cell {
+  padding: 0.25rem;
+}
+
+.nested-field {
+  margin-bottom: 0.25rem;
+}
+
+.nested-field:last-child {
+  margin-bottom: 0;
+}
+
+.nested-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.subsection-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.nested-table {
+  margin-top: 1rem;
+}
+
+.nested-fields {
+  padding-left: 1rem;
+  border-left: 3px solid #f26722;
+}
+
+.empty-table {
+  padding: 2rem;
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.tcf-value {
+  font-weight: 600;
+  color: #059669;
+  font-size: 1rem;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .data-table {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .data-table thead {
+    background: #111827;
+    border-bottom-color: #374151;
+  }
+  
+  .data-table th {
+    color: #f9fafb;
+    border-right-color: #374151;
+  }
+  
+  .data-table td {
+    border-bottom-color: #374151;
+    border-right-color: #374151;
+  }
+  
+  .data-table tbody tr:hover {
+    background: #111827;
+  }
+  
+  .subsection-title {
+    color: #f9fafb;
+    border-bottom-color: #374151;
+  }
+  
+  .nested-fields {
+    border-left-color: #f26722;
+  }
+  
+  .data-table .field-input,
+  .data-table .field-select,
+  .data-table .field-textarea {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+  
+  .data-table .field-input:focus,
+  .data-table .field-select:focus,
+  .data-table .field-textarea:focus {
+    background: #1f2937;
+    border-color: #f26722;
+    box-shadow: 0 0 0 3px rgba(242, 103, 34, 0.2);
+  }
+  
+  .tcf-value {
+    color: #10b981;
+  }
+}
+
