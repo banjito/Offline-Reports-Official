@@ -168,107 +168,34 @@ export class SyncService {
 
   /**
    * Sync local changes to remote (upload)
-   * Now processes items in parallel batches for better performance
    */
   private async syncUp(): Promise<number> {
+    let uploadCount = 0;
     const syncQueue = this.storage.getSyncQueue();
 
-    if (syncQueue.length === 0) {
-      return 0;
-    }
+    console.log(`Syncing up ${syncQueue.length} items...`);
 
-    console.log(`🔄 Syncing up ${syncQueue.length} items (async batches)...`);
-
-    // Process in batches of 10 to avoid overwhelming the API
-    const batchSize = 10;
-    let uploadCount = 0;
-    const errors: Array<{ item: SyncQueueItem; error: string }> = [];
-
-    for (let i = 0; i < syncQueue.length; i += batchSize) {
-      const batch = syncQueue.slice(i, i + batchSize);
-      
-      // Process batch in parallel
-      const batchPromises = batch.map(async (item) => {
-        try {
-          await this.uploadItem(item);
-          this.storage.removeSyncQueueItem(item.id);
-          return { success: true, item };
-        } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : 'Upload failed';
-          console.error(`❌ Failed to sync ${item.table_name}:${item.record_id}`, errorMsg);
-          this.storage.updateSyncQueueRetry(item.id, errorMsg);
-          return { success: false, item, error: errorMsg };
-        }
-      });
-
-      const batchResults = await Promise.all(batchPromises);
-      
-      batchResults.forEach(result => {
-        if (result.success) {
-          uploadCount++;
-        } else {
-          errors.push({ item: result.item, error: result.error || 'Unknown error' });
-        }
-      });
-
-      // Small delay between batches to avoid rate limiting
-      if (i + batchSize < syncQueue.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+    for (const item of syncQueue) {
+      try {
+        await this.uploadItem(item);
+        this.storage.removeSyncQueueItem(item.id);
+        uploadCount++;
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Upload failed';
+        console.error(`Failed to sync ${item.table_name}:${item.record_id}`, errorMsg);
+        this.storage.updateSyncQueueRetry(item.id, errorMsg);
       }
     }
 
-    if (errors.length > 0) {
-      console.warn(`⚠️  ${errors.length} items failed to sync`);
-    }
-
-    console.log(`✅ Successfully synced ${uploadCount} of ${syncQueue.length} items`);
     return uploadCount;
-  }
-
-  /**
-   * Check if a report is a custom form instance
-   */
-  private isCustomForm(report: any): boolean {
-    if (!report) return false;
-    
-    // Check if report_type indicates custom form
-    const reportType = report.report_type || '';
-    if (reportType === 'custom_form' || reportType.startsWith('custom')) {
-      return true;
-    }
-    
-    // Check if report_data contains custom form structure
-    const reportData = typeof report.report_data === 'string' 
-      ? JSON.parse(report.report_data) 
-      : report.report_data || {};
-    
-    // Custom forms have a specific structure with sections
-    if (reportData.sections && typeof reportData.sections === 'object') {
-      return true;
-    }
-    
-    // Check if template_id or template_name exists in report_data
-    if (reportData.template_id || reportData.template_name) {
-      return true;
-    }
-    
-    return false;
   }
 
   /**
    * Helper to get remote table name from local table name and record data
    */
   private getRemoteTableName(localTableName: string, data?: any): string {
-    if (localTableName === 'reports' && data) {
-      // Check if this is a custom form first
-      if (this.isCustomForm(data)) {
-        return 'custom_form_instances';
-      }
-      
-      // Otherwise, check for standard report type mapping
-      if (data.report_type) {
-        return this.slugToTable[data.report_type] || 'technical_reports';
-      }
+    if (localTableName === 'reports' && data && data.report_type) {
+      return this.slugToTable[data.report_type] || 'technical_reports';
     }
     return localTableName;
   }
@@ -298,34 +225,21 @@ export class SyncService {
 
       // Special handling for reports: unpack JSON blob into columns
       if (table_name === 'reports') {
-        // Check if this is a custom form and map accordingly
-        if (this.isCustomForm(payload)) {
-          payload = this.mapLocalReportToCustomFormInstance(payload);
-        } else {
-          payload = this.mapLocalReportToRemoteColumns(payload);
-        }
+        payload = this.mapLocalReportToRemoteColumns(payload);
       }
     }
-
-    // Use neta_ops schema for custom_form_instances and other report tables
-    const useNetaOpsSchema = remoteTableName === 'custom_form_instances' || 
-                             Object.values(this.slugToTable).includes(remoteTableName);
-    
-    const supabaseQuery = useNetaOpsSchema 
-      ? supabase.schema('neta_ops')
-      : supabase;
 
     let error;
 
     switch (operation) {
       case 'create':
-        ({ error } = await supabaseQuery.from(remoteTableName).insert(payload));
+        ({ error } = await supabase.from(remoteTableName).insert(payload));
         break;
       case 'update':
-        ({ error } = await supabaseQuery.from(remoteTableName).update(payload).eq('id', record_id));
+        ({ error } = await supabase.from(remoteTableName).update(payload).eq('id', record_id));
         break;
       case 'delete':
-        ({ error } = await supabaseQuery.from(remoteTableName).delete().eq('id', record_id));
+        ({ error } = await supabase.from(remoteTableName).delete().eq('id', record_id));
         break;
       default:
         throw new Error(`Unknown operation: ${operation}`);
@@ -340,138 +254,35 @@ export class SyncService {
   }
 
   /**
-   * Map local custom form report to custom_form_instances table format
-   */
-  private mapLocalReportToCustomFormInstance(localReport: any): any {
-    // Parse report_data if it's a string
-    let reportData: any = {};
-    if (typeof localReport.report_data === 'string') {
-      try {
-        reportData = JSON.parse(localReport.report_data);
-      } catch (e) {
-        console.warn('Failed to parse report_data for custom form:', e);
-        reportData = {};
-      }
-    } else {
-      reportData = localReport.report_data || {};
-    }
-
-    // Extract custom form metadata from report_data or report_type
-    const templateId = reportData.template_id || null;
-    const templateName = reportData.template_name || localReport.title || 'Custom Form';
-    const netaSection = reportData.neta_section || localReport.report_type || null;
-    
-    // Extract status from report_data or default to PASS
-    // Custom forms use 'PASS' or 'FAIL', not 'draft'/'submitted' etc.
-    let status = reportData.status;
-    if (!status || (status !== 'PASS' && status !== 'FAIL')) {
-      // Try to infer from localReport.status if it's a valid custom form status
-      const localStatus = localReport.status?.toUpperCase();
-      if (localStatus === 'PASS' || localStatus === 'FAIL') {
-        status = localStatus;
-      } else {
-        status = 'PASS'; // Default to PASS if invalid or missing
-      }
-    }
-
-    // The data field should contain ONLY jobInfo and sections (not metadata)
-    // Extract the form data, excluding metadata fields
-    // Use deep copy to ensure all nested structures (rows, fields, values) are preserved
-    
-    // First, extract jobInfo (preserve all nested properties)
-    const jobInfo = reportData.jobInfo || reportData.job_info || {};
-    
-    // Deep clone sections to preserve all nested data including rows arrays, fields objects, etc.
-    let sections: any = {};
-    if (reportData.sections && typeof reportData.sections === 'object') {
-      // Deep clone sections to preserve all nested structures
-      sections = JSON.parse(JSON.stringify(reportData.sections));
-    }
-    
-    // Build formData with deep-cloned structures
-    const formData: any = {
-      jobInfo: JSON.parse(JSON.stringify(jobInfo)), // Deep clone jobInfo
-      sections: sections // Already deep cloned
-    };
-    
-    // Log for debugging
-    if (Object.keys(sections).length > 0) {
-      const sectionIds = Object.keys(sections);
-      console.log(`  - Mapping custom form with ${sectionIds.length} sections`);
-      sectionIds.forEach(sectionId => {
-        const section = sections[sectionId];
-        if (section.rows && Array.isArray(section.rows)) {
-          console.log(`    - Section "${sectionId}": ${section.rows.length} rows`);
-        } else if (section.fields) {
-          console.log(`    - Section "${sectionId}": fields object`);
-        } else if (section.value !== undefined) {
-          console.log(`    - Section "${sectionId}": single value`);
-        }
-      });
-    }
-
-    // Build the custom_form_instances payload
-    const payload: any = {
-      id: localReport.id,
-      template_id: templateId,
-      template_name: templateName,
-      neta_section: netaSection,
-      job_id: localReport.job_id,
-      user_id: localReport.user_id || localReport.submitted_by || null,
-      data: formData,
-      status: status,
-      created_at: localReport.created_at,
-      updated_at: localReport.updated_at
-    };
-
-    // Remove null/undefined fields that shouldn't be sent
-    Object.keys(payload).forEach(key => {
-      if (payload[key] === null || payload[key] === undefined) {
-        // Keep template_id as null is valid, but remove other nulls
-        if (key !== 'template_id' && key !== 'user_id' && key !== 'neta_section') {
-          delete payload[key];
-        }
-      }
-    });
-
-    return payload;
-  }
-
-  /**
-   * Map local report object to remote table columns
-   * Since we now store ALL remote columns in report_data, this is much simpler
+   * Map local report object (single JSON blob) to remote table columns
    */
   private mapLocalReportToRemoteColumns(localReport: any): any {
-    // Parse report_data if it's a string
-    let reportData: any = {};
-    if (typeof localReport.report_data === 'string') {
-      try {
-        reportData = JSON.parse(localReport.report_data);
-      } catch (e) {
-        console.warn('Failed to parse report_data:', e);
-        reportData = {};
-      }
-    } else {
-      reportData = localReport.report_data || {};
-    }
+    const reportData = localReport.report_data || {};
 
-    // The report_data contains ALL the columns from the remote table
-    // Just add/update the metadata fields
-    const remotePayload = {
-      ...reportData, // Start with all the stored remote columns
+    // Base fields that exist in most report tables
+    const remotePayload: any = {
       id: localReport.id,
       job_id: localReport.job_id,
-      user_id: localReport.user_id || localReport.submitted_by || reportData.user_id,
+      user_id: localReport.user_id || localReport.submitted_by, // Fallback
       created_at: localReport.created_at,
-      updated_at: localReport.updated_at || new Date().toISOString(),
+      updated_at: localReport.updated_at,
+      comments: localReport.comments || reportData.comments,
+
+      // JSONB columns commonly found in report tables
+      report_info: reportData.report_info || reportData.reportInfo,
+      visual_inspection_items: reportData.visual_inspection_items || reportData.visualInspectionItems || reportData.visual_inspection,
+      test_equipment_used: reportData.test_equipment_used || reportData.testEquipment || reportData.test_equipment,
+
+      // Some tables have specific columns, we try to map them if they exist in data
+      insulation_resistance: reportData.insulation_resistance || reportData.insulationResistance,
+      contact_resistance: reportData.contact_resistance || reportData.contactResistance,
+      nameplate_data: reportData.nameplate_data || reportData.nameplateData || reportData.nameplate
     };
 
-    // Remove undefined fields (but keep null values as they're valid)
-    Object.keys(remotePayload).forEach(key => {
-      if (remotePayload[key] === undefined) {
-        delete remotePayload[key];
-      }
-    });
+    // Remove undefined fields
+    Object.keys(remotePayload).forEach(key =>
+      remotePayload[key] === undefined && delete remotePayload[key]
+    );
 
     return remotePayload;
   }
@@ -545,7 +356,6 @@ export class SyncService {
 
   /**
    * Sync reports for local jobs (Multi-table)
-   * Now captures ALL columns and preserves complete data structure
    */
   private async syncReports(): Promise<number> {
     try {
@@ -560,10 +370,9 @@ export class SyncService {
       // Get unique table names to query
       const tables = Array.from(new Set(Object.values(this.slugToTable)));
 
-      console.log(`🔄 Syncing reports from ${tables.length} tables (async)...`);
+      console.log(`Syncing reports from ${tables.length} tables...`);
 
-      // Process tables in parallel for better performance
-      const syncPromises = tables.map(async (tableName) => {
+      for (const tableName of tables) {
         try {
           // Use neta_ops schema for report tables
           const { data, error } = await supabase
@@ -574,98 +383,76 @@ export class SyncService {
 
           if (error) {
             // Some tables might not exist or have permissions issues, log and continue
-            console.warn(`⚠️  Failed to sync table ${tableName}:`, error.message);
-            return 0;
+            console.warn(`Failed to sync table ${tableName}:`, error.message);
+            continue;
           }
 
-          if (!data || data.length === 0) return 0;
+          if (!data || data.length === 0) continue;
 
           const reports = data as any[];
-          let tableReportCount = 0;
+          console.log(`📥 Found ${reports.length} reports in ${tableName}`);
 
           for (const remoteReport of reports) {
-            try {
-              // Map remote columns back to local Report structure
-              const reportType = this.tableToSlug[tableName] || 'unknown-report';
+            // Map remote columns back to local Report structure
+            const reportType = this.tableToSlug[tableName] || 'unknown-report';
 
-              // IMPORTANT: Capture ALL columns from the remote report
-              // Deep clone the entire report object to preserve all nested structures
-              const allReportData = JSON.parse(JSON.stringify(remoteReport));
+            // CRITICAL: Deep clone the ENTIRE remote report to capture ALL columns
+            // This preserves all nested structures like switches[], fuses[], irMeasured[], etc.
+            const reportData = JSON.parse(JSON.stringify(remoteReport));
 
-              // Debug complex reports
-              if (tableName.includes('switch') || tableName.includes('multi') || reportType.includes('switch')) {
-                console.log(`🔍 Complex report sync: ${reportType}`, {
-                  tableName,
-                  reportId: remoteReport.id,
-                  dataSize: JSON.stringify(allReportData).length,
-                  keys: Object.keys(allReportData).length
-                });
-              }
+            // Remove metadata fields from report_data (they're stored separately)
+            delete reportData.id;
+            delete reportData.job_id;
+            delete reportData.user_id;
+            delete reportData.created_at;
+            delete reportData.updated_at;
 
-              // Build report_data with ALL columns preserved
-              // Exclude metadata columns that are stored separately
-              const metadataColumns = ['id', 'job_id', 'user_id', 'created_at', 'updated_at'];
-              const reportData: any = {};
-
-              // Copy ALL columns except metadata into report_data
-              Object.keys(allReportData).forEach(key => {
-                if (!metadataColumns.includes(key)) {
-                  // Deep clone each column to preserve nested structures
-                  reportData[key] = allReportData[key];
-                }
-              });
-
-              // Extract title from various possible locations
-              let title = reportType.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-              if (remoteReport.report_info?.jobInfo?.reportTitle) {
-                title = remoteReport.report_info.jobInfo.reportTitle;
-              } else if (remoteReport.report_info?.identifier) {
-                title = `${title} - ${remoteReport.report_info.identifier}`;
-              } else if (remoteReport.report_info?.eqptLocation) {
-                title = `${title} - ${remoteReport.report_info.eqptLocation}`;
-              }
-
-              const localReport: Report = {
-                id: remoteReport.id,
-                job_id: remoteReport.job_id,
-                title: title,
-                report_type: reportType,
-                status: 'draft', // Default to draft if status missing
-                report_data: reportData, // Contains ALL columns as deep-cloned data
-                submitted_by: remoteReport.user_id,
-                submitted_at: remoteReport.created_at,
-                current_version: 1,
-                revision_history: [],
-                is_dirty: false,
-                created_at: remoteReport.created_at,
-                updated_at: remoteReport.updated_at
-              };
-
-              this.storage.upsertReport(localReport);
-              tableReportCount++;
-            } catch (reportError) {
-              console.error(`❌ Error processing report ${remoteReport.id} from ${tableName}:`, reportError);
+            // Log what we're capturing for debugging
+            const dataKeys = Object.keys(reportData);
+            console.log(`  📋 Report ${remoteReport.id}: ${dataKeys.length} data fields`);
+            if (dataKeys.length > 5) {
+              console.log(`     Fields: ${dataKeys.slice(0, 10).join(', ')}${dataKeys.length > 10 ? '...' : ''}`);
             }
+
+            // Extract title from various possible locations
+            let title = reportType.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            if (reportData.report_info?.jobInfo?.reportTitle) {
+              title = reportData.report_info.jobInfo.reportTitle;
+            } else if (reportData.report_info?.identifier) {
+              title = `${title} - ${reportData.report_info.identifier}`;
+            } else if (reportData.report_info?.eqptLocation) {
+              title = `${title} - ${reportData.report_info.eqptLocation}`;
+            }
+
+            const localReport: Report = {
+              id: remoteReport.id,
+              job_id: remoteReport.job_id,
+              title: title,
+              report_type: reportType,
+              status: reportData.status || 'draft',
+              report_data: reportData, // Contains ALL columns from remote
+              submitted_by: remoteReport.user_id,
+              submitted_at: remoteReport.created_at,
+              current_version: 1,
+              revision_history: [],
+              is_dirty: false,
+              created_at: remoteReport.created_at,
+              updated_at: remoteReport.updated_at
+            };
+
+            this.storage.upsertReport(localReport);
           }
 
-          if (tableReportCount > 0) {
-            console.log(`✅ Synced ${tableReportCount} reports from ${tableName}`);
-          }
-          return tableReportCount;
+          totalReports += reports.length;
         } catch (tableError) {
-          console.warn(`⚠️  Error processing table ${tableName}:`, tableError);
-          return 0;
+          console.warn(`Error processing table ${tableName}:`, tableError);
         }
-      });
+      }
 
-      // Wait for all tables to sync in parallel
-      const results = await Promise.all(syncPromises);
-      totalReports = results.reduce((sum, count) => sum + count, 0);
-
-      console.log(`✅ Synced ${totalReports} total reports across all tables`);
+      console.log(`Synced ${totalReports} reports across all tables`);
       return totalReports;
     } catch (error) {
-      console.error('❌ Failed to sync reports:', error);
+      console.error('Failed to sync reports:', error);
       return 0;
     }
   }

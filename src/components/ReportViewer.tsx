@@ -5,6 +5,27 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Job } from '../types';
 import './ReportViewer.css';
 
+// Import all report components
+import {
+  LowVoltageSwitchMultiDeviceReport,
+  PanelboardReport,
+  SwitchgearReport,
+  DryTypeTransformerReport,
+  LowVoltageCircuitBreakerReport,
+  MediumVoltageCircuitBreakerReport,
+  AutomaticTransferSwitchReport,
+  MediumVoltageSwitchReport,
+  GroundingSystemMasterReport,
+  LowVoltageCableReport,
+  CurrentTransformerReport,
+  PotentialTransformerReport,
+  LiquidFilledTransformerReport,
+  getCircuitBreakerVariant,
+  getMVSwitchVariant,
+  getCableVariant,
+  getTransformerTestVariant
+} from './reports';
+
 interface ReportViewerProps {
   jobId?: string;
   reportId?: string;
@@ -77,9 +98,236 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
 
     const reportData = report.parsedData || (typeof report.report_data === 'string' ? JSON.parse(report.report_data) : report.report_data);
 
-    // For now, use the generic editor for all reports
-    // This preserves ALL the data structure and allows editing
-    return <GenericReportEditor job={job} reportData={reportData} onSave={handleSave} />;
+    // Route to specific report renderers based on report type
+    switch (reportType) {
+      // Low Voltage Switch Reports
+      case 'low-voltage-switch-multi-device-test':
+      case 'low-voltage-switch-report':
+      case '6-low-voltage-switch-maint-mts-report':
+        return (
+          <LowVoltageSwitchMultiDeviceReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+      
+      // Panelboard Reports
+      case 'panelboard-report':
+      case 'panelboard-assemblies-ats25':
+        return (
+          <PanelboardReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+      
+      // Switchgear Reports
+      case 'switchgear-report':
+      case 'switchgear-switchboard-assemblies-ats25':
+      case 'switchgear-panelboard-mts-report':
+        return (
+          <SwitchgearReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+      
+      // Dry Type Transformer Reports
+      case 'dry-type-transformer':
+      case 'large-dry-type-transformer-report':
+      case 'large-dry-type-transformer':
+      case 'large-dry-type-transformer-mts-report':
+      case 'large-dry-type-xfmr-mts-report':
+      case 'two-small-dry-typer-xfmr-ats-report':
+      case 'two-small-dry-typer-xfmr-mts-report':
+        return (
+          <DryTypeTransformerReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+      
+      // Liquid Filled Transformer Reports
+      case 'liquid-filled-transformer':
+      case 'oil-inspection':
+      case 'liquid-xfmr-visual-mts-report':
+        return (
+          <LiquidFilledTransformerReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+            variant={reportType.includes('mts') ? 'mts' : 'ats'}
+          />
+        );
+      
+      // Low Voltage Circuit Breaker Reports
+      case 'low-voltage-circuit-breaker-electronic-trip-ats-report':
+      case 'low-voltage-circuit-breaker-electronic-trip-ats-secondary-injection-report':
+      case 'low-voltage-circuit-breaker-thermal-magnetic-ats-report':
+      case 'low-voltage-circuit-breaker-electronic-trip-mts-report':
+      case 'low-voltage-circuit-breaker-thermal-magnetic-mts-report':
+      case 'low-voltage-panelboard-small-breaker-report':
+        return (
+          <LowVoltageCircuitBreakerReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+            variant={getCircuitBreakerVariant(reportType)}
+          />
+        );
+      
+      // Medium Voltage Circuit Breaker Reports
+      case 'medium-voltage-circuit-breaker-report':
+      case 'medium-voltage-circuit-breaker-mts-report':
+        return (
+          <MediumVoltageCircuitBreakerReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+      
+      // Automatic Transfer Switch Reports
+      case 'automatic-transfer-switch-ats-report':
+        return (
+          <AutomaticTransferSwitchReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+      
+      // Medium Voltage Switch Reports (Oil & SF6)
+      case 'medium-voltage-switch-oil-report':
+      case 'medium-voltage-switch-sf6-report':
+      case '23-medium-voltage-switch-mts-report':
+        return (
+          <MediumVoltageSwitchReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+            variant={getMVSwitchVariant(reportType)}
+          />
+        );
+      
+      // Grounding Reports
+      case 'grounding-system-master':
+      case 'grounding-fall-of-potential-slope-method-test':
+        return (
+          <GroundingSystemMasterReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+      
+      // Low Voltage Cable Reports
+      case 'low-voltage-cable-test-12sets':
+      case 'low-voltage-cable-test-20sets':
+      case 'low-voltage-cable-test-3sets':
+      case '3-low-voltage-cable-ats':
+      case '3-low-voltage-cable-mts':
+        return (
+          <LowVoltageCableReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+            variant={getCableVariant(reportType)}
+          />
+        );
+      
+      // Current Transformer Reports
+      case 'current-transformer-test-ats-report':
+      case '12-current-transformer-test-ats-report':
+      case '12-current-transformer-test-mts-report':
+        return (
+          <CurrentTransformerReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+            variant={getTransformerTestVariant(reportType)}
+          />
+        );
+      
+      // Potential Transformer Reports
+      case 'potential-transformer-ats-report':
+      case '13-voltage-potential-transformer-test-mts-report':
+        return (
+          <PotentialTransformerReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+            variant={getTransformerTestVariant(reportType)}
+          />
+        );
+      
+      // Medium Voltage VLF/Tan Delta Reports (using Cable report as base)
+      case 'medium-voltage-vlf-tan-delta':
+      case 'medium-voltage-vlf':
+      case 'medium-voltage-cable-vlf-test':
+      case 'medium-voltage-vlf-tan-delta-mts':
+      case 'medium-voltage-vlf-mts-report':
+      case 'medium-voltage-cable-vlf-test-mts':
+      case 'electrical-tan-delta-test-mts-form':
+        return (
+          <LowVoltageCableReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+            variant={getCableVariant(reportType)}
+          />
+        );
+      
+      // Metal Enclosed Busway (using Switchgear as similar structure)
+      case 'metal-enclosed-busway':
+        return (
+          <SwitchgearReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+      
+      // Motor Starter (using MV Switch as similar structure)
+      case '23-medium-voltage-motor-starter-mts-report':
+        return (
+          <MediumVoltageSwitchReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+            variant={getMVSwitchVariant(reportType)}
+          />
+        );
+      
+      // Relay Test (using MV Circuit Breaker as similar structure)
+      case 'relay-test-report':
+        return (
+          <MediumVoltageCircuitBreakerReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+      
+      // Oil Analysis (using Liquid Filled Transformer as similar structure)
+      case 'oil-analysis':
+        return (
+          <LiquidFilledTransformerReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+            variant="ats"
+          />
+        );
+      
+      default:
+        // Fall back to generic editor for unknown report types
+        return <GenericReportEditor reportData={reportData} onSave={handleSave} />;
+    }
   };
 
   const handleSave = async (updatedData: any) => {
@@ -203,7 +451,7 @@ const isCalculatedField = (key: string, path: string[]): boolean => {
 };
 
 // Generic report editor that works with any report data structure
-function GenericReportEditor({ job, reportData, onSave }: { job: Job | null; reportData: any; onSave: (data: any) => void }) {
+function GenericReportEditor({ reportData, onSave }: { reportData: any; onSave: (data: any) => void }) {
   const [editedData, setEditedData] = useState<any>(reportData);
   const [isEditing, setIsEditing] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -226,7 +474,7 @@ function GenericReportEditor({ job, reportData, onSave }: { job: Job | null; rep
       });
 
       if (hasComplexArrays) {
-        console.log('🔍 Complex arrays found:', Object.entries(reportData).filter(([key, val]) => Array.isArray(val) && val.length > 5));
+        console.log('🔍 Complex arrays found:', Object.entries(reportData).filter(([, val]) => Array.isArray(val) && (val as any[]).length > 5));
       }
     }
   }, [reportData]);

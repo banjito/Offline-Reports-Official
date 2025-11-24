@@ -11,10 +11,8 @@ interface SyncStatusProps {
 
 export function SyncStatus({
   networkStatus,
-  apiStatus,
   isSyncing,
   onSync,
-  onSyncUp,
 }: SyncStatusProps) {
   // Only need network connection for Supabase sync (not the web app API)
   const canSync = networkStatus.online;

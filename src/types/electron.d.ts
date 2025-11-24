@@ -3,6 +3,13 @@
  * Matches the API exposed in preload.js
  */
 
+// Declare electron module to avoid TypeScript errors
+declare module 'electron' {
+  export const app: {
+    getPath: (name: string) => string;
+  };
+}
+
 export interface NetworkStatus {
   online: boolean;
   timestamp: string;

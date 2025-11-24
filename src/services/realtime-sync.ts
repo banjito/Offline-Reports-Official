@@ -756,7 +756,7 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
               'generated-document': 'generated_documents'
             };
             
-            const reportReferences: Array<{ reportId: string; tableName: string; assetName: string }> = [];
+            const reportReferences: Array<{ reportId: string; tableName: string; assetName: string; slug: string }> = [];
             
             assetsData.forEach((asset: any) => {
               if (asset.file_url && asset.file_url.startsWith('report:')) {
@@ -776,7 +776,7 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
                 const tableName = slugToTable[slug];
                 
                 if (reportId && tableName && !reportReferences.find(r => r.reportId === reportId)) {
-                  reportReferences.push({ reportId, tableName, assetName: asset.name });
+                  reportReferences.push({ reportId, tableName, assetName: asset.name, slug }); // Store slug for report_type
                 } else if (reportId && !tableName) {
                   console.warn(`    ⚠️  Unknown report slug: "${slug}" for asset "${asset.name}"`);
                 }
@@ -789,12 +789,12 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
               console.log('📡 Fetching reports from their specific Supabase tables...');
               
               // Group reports by table for efficient querying
-              const reportsByTable = new Map<string, Array<{ reportId: string; assetName: string }>>();
+              const reportsByTable = new Map<string, Array<{ reportId: string; assetName: string; slug: string }>>();
               reportReferences.forEach(ref => {
                 if (!reportsByTable.has(ref.tableName)) {
                   reportsByTable.set(ref.tableName, []);
                 }
-                reportsByTable.get(ref.tableName)!.push({ reportId: ref.reportId, assetName: ref.assetName });
+                reportsByTable.get(ref.tableName)!.push({ reportId: ref.reportId, assetName: ref.assetName, slug: ref.slug });
               });
               
               console.log(`📊 Will query ${reportsByTable.size} different report tables`);
@@ -826,11 +826,12 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
                     // Add source table metadata to each report
                     tableReports.forEach((report: any) => {
                       const assetInfo = reports.find(r => r.reportId === report.id);
-                      console.log(`       - Report ${report.id.substring(0, 8)}... (${assetInfo?.assetName || 'Unknown'})`);
+                      console.log(`       - Report ${report.id.substring(0, 8)}... (${assetInfo?.assetName || 'Unknown'}) [slug: ${assetInfo?.slug}]`);
                       allFetchedReports.push({
                         ...report,
                         _source_table: tableName,
-                        _asset_name: assetInfo?.assetName || 'Unknown'
+                        _asset_name: assetInfo?.assetName || 'Unknown',
+                        _slug: assetInfo?.slug || 'unknown' // Store the slug for report_type
                       });
                     });
                   } else {
@@ -895,14 +896,14 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
                   let referencedReportsFailed = 0;
                   
                   for (const report of referencedReports) {
-                    console.log(`  📝 Processing report ${report.id.substring(0, 8)}... (${report._asset_name})`);
+                    console.log(`  📝 Processing report ${report.id.substring(0, 8)}... (${report._asset_name}) [type: ${report._slug}]`);
                     
                     // Consolidate all JSONB fields into report_data
                     // Different report types have different JSONB fields (report_info, visual_inspection_items, etc.)
                     const reportData: any = {};
                     Object.keys(report).forEach(key => {
                       // Skip metadata and standard fields
-                      if (!['id', 'job_id', 'user_id', 'created_at', 'updated_at', '_source_table', '_asset_name'].includes(key)) {
+                      if (!['id', 'job_id', 'user_id', 'created_at', 'updated_at', '_source_table', '_asset_name', '_slug'].includes(key)) {
                         reportData[key] = report[key];
                       }
                     });
@@ -911,7 +912,7 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
                       id: report.id,
                       job_id: report.job_id,
                       title: report._asset_name || 'Report',
-                      report_type: report._source_table || 'unknown',
+                      report_type: report._slug || 'unknown', // Use the slug as report_type so renderers can match it
                       status: 'draft', // Default status since source tables don't have status
                       report_data: JSON.stringify(reportData),
                       submitted_by: report.user_id || null,

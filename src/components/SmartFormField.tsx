@@ -1,4 +1,3 @@
-import React from 'react';
 import { getDropdownOptionsForField, getUnitOptionsForField } from '../constants/reportOptions';
 import './SmartFormField.css';
 

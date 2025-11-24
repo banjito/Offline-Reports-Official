@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+// @ts-ignore - electron is available in main process
 import { app } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 import type {
@@ -8,12 +9,9 @@ import type {
   Report,
   Equipment,
   Asset,
-  User,
   Customer,
   ReportTemplate,
   SyncQueueItem,
-  SyncMetadata,
-  SyncConflict,
   AppSettings,
 } from '../types';
 
@@ -54,7 +52,9 @@ export class OfflineStorage {
 
   /**
    * Mark a record as dirty (needs sync)
+   * @internal Currently unused but kept for future sync-up functionality
    */
+  // @ts-ignore - Kept for future use
   private markDirty(table: string, id: string): void {
     const stmt = this.db.prepare(`
       UPDATE ${table} 

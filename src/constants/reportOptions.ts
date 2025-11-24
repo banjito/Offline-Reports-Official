@@ -116,7 +116,7 @@ export const STANDARD_DROPDOWN_OPTIONS = {
 } as const;
 
 // Helper functions to detect field types and appropriate dropdowns
-export function getDropdownOptionsForField(fieldName: string, fieldConfig?: any): string[] | null {
+export function getDropdownOptionsForField(fieldName: string, fieldConfig?: any): readonly string[] | null {
   const lowerName = fieldName.toLowerCase();
   
   // Check for custom options in field config first
@@ -152,7 +152,7 @@ export function getDropdownOptionsForField(fieldName: string, fieldConfig?: any)
   return null;
 }
 
-export function getUnitOptionsForField(fieldName: string, fieldConfig?: any): Array<{symbol: string, name: string}> | null {
+export function getUnitOptionsForField(fieldName: string, fieldConfig?: any): readonly {readonly symbol: string, readonly name: string}[] | null {
   const lowerName = fieldName.toLowerCase();
   
   // Check explicit unit options in field config first

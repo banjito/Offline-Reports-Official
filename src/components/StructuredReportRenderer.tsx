@@ -1,5 +1,5 @@
-import React from 'react';
 import { SmartFormField } from './SmartFormField';
+import { ReactNode } from 'react';
 import './StructuredReportRenderer.css';
 
 interface StructuredReportRendererProps {
@@ -30,7 +30,7 @@ export function StructuredReportRenderer({ data, isEditMode, onFieldChange }: St
 
 // Section grouping logic
 function groupDataIntoSections(data: any): Array<{title: string, type: string, data: any, basePath: string}> {
-  const sections = [];
+  const sections: Array<{title: string, type: string, data: any, basePath: string}> = [];
   
   // Common section names to look for
   const sectionPatterns = {
@@ -156,7 +156,7 @@ function renderFields(fields: any, basePath: string, isEditMode: boolean, onFiel
           return (
             <div key={key} className="field-row">
               <label className="field-label">Temperature Correction Factor (TCF):</label>
-              <span className="field-value tcf-value">{value}</span>
+              <span className="field-value tcf-value">{String(value)}</span>
             </div>
           );
         }
@@ -176,7 +176,7 @@ function renderFields(fields: any, basePath: string, isEditMode: boolean, onFiel
 }
 
 // Render data as HTML table
-function renderTable(rows: any[], basePath: string, title: string, isEditMode: boolean, onFieldChange: (path: string, value: any) => void) {
+function renderTable(rows: any[], basePath: string, _title: string, isEditMode: boolean, onFieldChange: (path: string, value: any) => void) {
   if (!rows || rows.length === 0) {
     if (!isEditMode) return <div className="empty-table">No data</div>;
     
@@ -222,7 +222,7 @@ function renderTable(rows: any[], basePath: string, title: string, isEditMode: b
                 if (typeof cellValue === 'object' && cellValue !== null && !Array.isArray(cellValue)) {
                   return (
                     <td key={col} className="nested-cell">
-                      {Object.entries(cellValue).map(([subKey, subValue]) => (
+                      {Object.entries(cellValue).map(([subKey, subValue]): ReactNode => (
                         <div key={subKey} className="nested-field">
                           <SmartFormField
                             fieldKey={subKey}
