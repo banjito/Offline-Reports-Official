@@ -5,14 +5,17 @@ interface SyncStatusProps {
   networkStatus: NetworkStatus;
   apiStatus: ApiStatus;
   isSyncing: boolean;
+  isSyncingUp?: boolean;
   onSync: () => void;
-  onSyncUp?: () => void; // Optional upload sync (disabled in development)
+  onSyncUp?: () => void;
 }
 
 export function SyncStatus({
   networkStatus,
   isSyncing,
+  isSyncingUp,
   onSync,
+  onSyncUp,
 }: SyncStatusProps) {
   // Only need network connection for Supabase sync (not the web app API)
   const canSync = networkStatus.online;
@@ -33,7 +36,7 @@ export function SyncStatus({
         <button
           className="sync-button"
           onClick={onSync}
-          disabled={!canSync || isSyncing}
+          disabled={!canSync || isSyncing || isSyncingUp}
           title="Download jobs and reports from Supabase"
           style={{ 
             backgroundColor: '#10b981',
@@ -53,24 +56,28 @@ export function SyncStatus({
           )}
         </button>
 
-        {/* Upload to Supabase - DISABLED in development */}
+        {/* Upload to Supabase */}
         <button
           className="sync-button"
-          onClick={() => {
-            alert('⚠️ Upload to Database is DISABLED during development.\n\nThis will be enabled later to push offline changes back to Supabase.');
-          }}
-          disabled={true}
-          title="Upload offline changes to Supabase (DISABLED)"
+          onClick={onSyncUp}
+          disabled={!canSync || isSyncing || isSyncingUp || !onSyncUp}
+          title="Upload offline changes to Supabase"
           style={{ 
-            backgroundColor: '#6b7280',
-            borderColor: '#6b7280',
-            opacity: 0.5,
-            cursor: 'not-allowed'
+            backgroundColor: isSyncingUp ? '#3b82f6' : '#3b82f6',
+            borderColor: '#3b82f6'
           }}
         >
-          <span className="sync-icon">⬆</span>
-          Sync TO DB
-          <span style={{ fontSize: '0.75rem', marginLeft: '0.25rem' }}>(disabled)</span>
+          {isSyncingUp ? (
+            <>
+              <span className="spinner" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <span className="sync-icon">⬆</span>
+              Sync TO DB
+            </>
+          )}
         </button>
       </div>
     </div>

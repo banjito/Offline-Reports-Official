@@ -5,7 +5,7 @@ import { JobDetail } from './components/JobDetail';
 import { ReportViewer } from './components/ReportViewer';
 import { SyncStatus } from './components/SyncStatus';
 import { NetworkStatus, ApiStatus } from './types/electron';
-import { initializeSyncService, performFullSync } from './services/realtime-sync';
+import { initializeSyncService, performFullSync, syncUpReports } from './services/realtime-sync';
 import './App.css';
 
 function App() {
@@ -20,6 +20,7 @@ function App() {
   });
 
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncingUp, setIsSyncingUp] = useState(false);
   const [syncInitialized, setSyncInitialized] = useState(false);
 
   useEffect(() => {
@@ -89,6 +90,37 @@ function App() {
     }
   };
 
+  const handleSyncUp = async () => {
+    if (!syncInitialized) {
+      alert('Sync service not initialized. Please check your .env file has SUPABASE_URL and SUPABASE_ANON_KEY');
+      return;
+    }
+    
+    setIsSyncingUp(true);
+    try {
+      console.log('Starting sync UP to Supabase...');
+      const result = await syncUpReports();
+      
+      const messages = [
+        result.success ? `Upload completed!` : `Upload had issues:`,
+        ``,
+        `📤 ${result.reportsUploaded || 0} reports uploaded`,
+        `📦 ${result.assetsCreated || 0} assets created`,
+      ];
+      
+      if (result.errors && result.errors.length > 0) {
+        messages.push(``, `⚠️ ${result.errors.length} errors/warnings:`, ...result.errors.slice(0, 10));
+      }
+      
+      alert(messages.join('\n'));
+    } catch (error) {
+      console.error('Sync up error:', error);
+      alert('Upload failed. Check console for details.');
+    } finally {
+      setIsSyncingUp(false);
+    }
+  };
+
   return (
     <Router>
       <div className="app">
@@ -99,7 +131,9 @@ function App() {
               networkStatus={networkStatus}
               apiStatus={apiStatus}
               isSyncing={isSyncing}
+              isSyncingUp={isSyncingUp}
               onSync={handleSync}
+              onSyncUp={handleSyncUp}
             />
           </div>
         </header>

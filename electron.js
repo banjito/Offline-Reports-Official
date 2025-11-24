@@ -555,6 +555,53 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
           console.error('Error upserting report:', err);
           throw err;
         }
+      } else if (method === 'getDirty') {
+        // Get all reports that have been modified locally and need to be synced up
+        console.log('📤 Fetching dirty reports for sync-up...');
+        const stmt = db.prepare('SELECT * FROM technical_reports WHERE is_dirty = 1');
+        const data = stmt.all();
+        console.log(`Found ${data.length} dirty reports`);
+        return { success: true, data };
+      } else if (method === 'markClean') {
+        // Mark a report as clean (synced)
+        const { id } = params;
+        console.log(`✅ Marking report ${id} as clean`);
+        const stmt = db.prepare('UPDATE technical_reports SET is_dirty = 0, last_sync_at = ? WHERE id = ?');
+        const info = stmt.run(new Date().toISOString(), id);
+        return { success: true, changes: info.changes };
+      } else if (method === 'createReport') {
+        // Create a new report locally (for offline creation)
+        const report = params;
+        console.log('➕ Creating new report:', report.title);
+
+        try {
+          const stmt = db.prepare(`
+            INSERT INTO technical_reports (
+              id, job_id, title, report_type, status, report_data,
+              submitted_by, submitted_at, reviewed_by, reviewed_at,
+              revision_history, current_version, review_comments,
+              approved_at, issued_at, sent_at, is_dirty, last_sync_at,
+              created_at, updated_at
+            ) VALUES (
+              @id, @job_id, @title, @report_type, @status, @report_data,
+              @submitted_by, @submitted_at, @reviewed_by, @reviewed_at,
+              @revision_history, @current_version, @review_comments,
+              @approved_at, @issued_at, @sent_at, @is_dirty, @last_sync_at,
+              @created_at, @updated_at
+            )
+          `);
+
+          const info = stmt.run({
+            ...report,
+            is_dirty: 1, // New reports are always dirty
+            last_sync_at: null
+          });
+          console.log('Report created successfully. Changes:', info.changes);
+          return { success: true, id: report.id };
+        } catch (err) {
+          console.error('Error creating report:', err);
+          throw err;
+        }
       }
     } else if (table === 'report_templates') {
       if (method === 'deleteAll') {

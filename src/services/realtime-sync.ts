@@ -1055,3 +1055,322 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
   }
 }
 
+// ============================================================================
+// SYNC UP - Upload local changes to Supabase
+// ============================================================================
+
+export interface SyncUpResult {
+  success: boolean;
+  reportsUploaded?: number;
+  assetsCreated?: number;
+  errors?: string[];
+}
+
+// Slug to table name mapping for uploading
+const SLUG_TO_TABLE: Record<string, string> = {
+  'switchgear-switchboard-assemblies-ats25': 'switchgear_switchboard_ats25_reports',
+  'panelboard-assemblies-ats25': 'panelboard_assemblies_ats25_reports',
+  'panelboard-report': 'panelboard_reports',
+  'switchgear-report': 'switchgear_reports',
+  'dry-type-transformer': 'transformer_reports',
+  'large-dry-type-transformer-report': 'large_transformer_reports',
+  'large-dry-type-transformer': 'large_transformer_reports',
+  'large-dry-type-transformer-mts-report': 'large_dry_type_transformer_mts_reports',
+  'large-dry-type-xfmr-mts-report': 'large_dry_type_transformer_mts_reports',
+  'liquid-xfmr-visual-mts-report': 'liquid_xfmr_visual_mts_reports',
+  'low-voltage-switch-report': 'low_voltage_switch_reports',
+  'medium-voltage-switch-oil-report': 'medium_voltage_switch_oil_reports',
+  'medium-voltage-switch-sf6': 'medium_voltage_switch_sf6_reports',
+  'medium-voltage-switch-sf6-report': 'medium_voltage_switch_sf6_reports',
+  'potential-transformer-ats-report': 'potential_transformer_ats_reports',
+  'low-voltage-panelboard-small-breaker-report': 'low_voltage_panelboard_small_breaker_reports',
+  'medium-voltage-circuit-breaker-report': 'medium_voltage_circuit_breaker_reports',
+  'medium-voltage-circuit-breaker-mts-report': 'medium_voltage_circuit_breaker_mts_reports',
+  'medium-voltage-vlf-mts-report': 'medium_voltage_vlf_mts_reports',
+  'medium-voltage-cable-vlf-test-mts': 'medium_voltage_vlf_mts_reports',
+  'medium-voltage-vlf': 'medium_voltage_vlf_mts_reports',
+  'medium-voltage-vlf-tan-delta': 'tandelta_reports',
+  'medium-voltage-vlf-tan-delta-mts': 'tandelta_mts_reports',
+  'electrical-tan-delta-test-mts-form': 'tandelta_mts_reports',
+  'medium-voltage-cable-vlf-test': 'medium_voltage_cable_vlf_test',
+  'current-transformer-test-ats-report': 'current_transformer_test_ats_reports',
+  '12-current-transformer-test-ats-report': 'current_transformer_test_ats_reports',
+  '12-current-transformer-test-mts-report': 'current_transformer_test_mts_reports',
+  '13-voltage-potential-transformer-test-mts-report': 'voltage_potential_transformer_mts_reports',
+  '23-medium-voltage-motor-starter-mts-report': 'medium_voltage_motor_starter_mts_reports',
+  '23-medium-voltage-switch-mts-report': 'medium_voltage_switch_mts_reports',
+  'metal-enclosed-busway': 'metal_enclosed_busway_reports',
+  'low-voltage-circuit-breaker-thermal-magnetic-mts-report': 'low_voltage_circuit_breaker_thermal_magnetic_mts_reports',
+  'low-voltage-circuit-breaker-electronic-trip-ats-report': 'low_voltage_circuit_breaker_electronic_trip_ats',
+  'low-voltage-circuit-breaker-electronic-trip-ats-secondary-injection-report': 'low_voltage_circuit_breaker_electronic_trip_ats',
+  'low-voltage-circuit-breaker-thermal-magnetic-ats-report': 'low_voltage_circuit_breaker_thermal_magnetic_ats',
+  'automatic-transfer-switch-ats-report': 'automatic_transfer_switch_ats_reports',
+  'low-voltage-circuit-breaker-electronic-trip-mts-report': 'low_voltage_circuit_breaker_electronic_trip_mts',
+  'two-small-dry-typer-xfmr-mts-report': 'two_small_dry_type_xfmr_mts_reports',
+  'low-voltage-cable-test-3sets': 'low_voltage_cable_test_3sets',
+  'low-voltage-cable-test-12sets': 'low_voltage_cable_test_12sets',
+  'low-voltage-cable-test-20sets': 'low_voltage_cable_test_12sets', // Uses same table
+  'low-voltage-switch-multi-device-test': 'low_voltage_switch_multi_device_reports',
+  'two-small-dry-typer-xfmr-ats-report': 'two_small_dry_type_xfmr_ats_reports',
+  'switchgear-panelboard-mts-report': 'switchgear_panelboard_mts_reports',
+  'liquid-filled-transformer': 'liquid_filled_transformer_reports',
+  'oil-inspection': 'liquid_filled_transformer_reports',
+  '6-low-voltage-switch-maint-mts-report': 'low_voltage_switch_maint_mts_reports',
+  'grounding-fall-of-potential-slope-method-test': 'grounding_fall_of_potential_slope_method_test_reports',
+  'grounding-system-master': 'grounding_system_master_reports',
+};
+
+/**
+ * Upload dirty reports from local SQLite to Supabase
+ */
+export async function syncUpReports(): Promise<SyncUpResult> {
+  try {
+    console.log('=== Starting Sync UP (Upload to Supabase) ===');
+    const supabase = getSupabase();
+    const errors: string[] = [];
+    let reportsUploaded = 0;
+    let assetsCreated = 0;
+    
+    // Get all dirty reports from local database
+    console.log('📤 Querying for dirty reports...');
+    const reportsResult = await window.electronAPI.dbQuery('reports', 'getDirty', {});
+    console.log('📤 getDirty result:', reportsResult);
+    
+    if (!reportsResult.success) {
+      console.error('❌ Failed to get dirty reports:', reportsResult.error);
+      return { success: false, errors: [reportsResult.error || 'Failed to query dirty reports'] };
+    }
+    
+    const dirtyReports = reportsResult.data || [];
+    console.log(`📤 Found ${dirtyReports.length} dirty reports to upload`);
+    
+    if (dirtyReports.length === 0) {
+      console.log('ℹ️  No dirty reports to sync');
+      return { success: true, reportsUploaded: 0, assetsCreated: 0 };
+    }
+    
+    for (const report of dirtyReports) {
+      try {
+        console.log(`\n📝 Processing report: ${report.title} (${report.report_type})`);
+        
+        // Get the table name for this report type
+        const tableName = SLUG_TO_TABLE[report.report_type];
+        
+        if (!tableName) {
+          console.warn(`⚠️  Unknown report type: ${report.report_type}, skipping`);
+          errors.push(`Unknown report type: ${report.report_type}`);
+          continue;
+        }
+        
+        // Parse report_data
+        let reportData: any = {};
+        if (typeof report.report_data === 'string') {
+          try {
+            reportData = JSON.parse(report.report_data);
+          } catch (e) {
+            console.error('Failed to parse report_data:', e);
+            errors.push(`Failed to parse report_data for ${report.id}`);
+            continue;
+          }
+        } else {
+          reportData = report.report_data || {};
+        }
+        
+        // Build the payload for Supabase
+        // Different tables have different column structures - use table-specific mapping
+        const payload: any = {
+          id: report.id,
+          job_id: report.job_id,
+          user_id: report.submitted_by || null,
+          created_at: report.created_at,
+          updated_at: new Date().toISOString(),
+        };
+        
+        // Tables that use report_info + rows structure (simple tables)
+        const SIMPLE_TABLES = [
+          'grounding_system_master_reports',
+          'grounding_fall_of_potential_slope_method_test_reports',
+        ];
+        
+        // Tables that use report_data JSONB column
+        const REPORT_DATA_TABLES = [
+          'two_small_dry_type_xfmr_ats_reports',
+          'two_small_dry_type_xfmr_mts_reports',
+          'low_voltage_switch_multi_device_reports',
+          'medium_voltage_vlf_mts_reports',
+          'tandelta_reports',
+          'tandelta_mts_reports',
+        ];
+        
+        if (SIMPLE_TABLES.includes(tableName)) {
+          // Simple structure: report_info + rows
+          if (reportData.report_info) {
+            payload.report_info = reportData.report_info;
+          } else {
+            // Build report_info from available data
+            payload.report_info = {
+              customer: reportData.customer || reportData.jobInfo?.customer || '',
+              address: reportData.address || reportData.jobInfo?.address || '',
+              jobNumber: reportData.jobNumber || reportData.jobInfo?.jobNumber || '',
+              identifier: reportData.identifier || '',
+              status: reportData.status || 'PASS',
+              title: report.title,
+              technicians: reportData.technicians || reportData.jobInfo?.technicians || '',
+              date: reportData.date || reportData.jobInfo?.date || new Date().toISOString().split('T')[0],
+              substation: reportData.substation || reportData.jobInfo?.substation || '',
+              eqptLocation: reportData.eqptLocation || reportData.jobInfo?.eqptLocation || '',
+              temperature: reportData.temperature || reportData.jobInfo?.temperature || { fahrenheit: 68, celsius: 20, humidity: 0 },
+            };
+          }
+          if (reportData.rows) {
+            payload.rows = reportData.rows;
+          }
+        } else if (REPORT_DATA_TABLES.includes(tableName)) {
+          // Use report_data JSONB column
+          payload.report_data = reportData;
+        } else {
+          // Standard structure with multiple JSONB columns
+          if (reportData.report_info) {
+            payload.report_info = reportData.report_info;
+          }
+          if (reportData.visual_inspection_items || reportData.visualInspection) {
+            payload.visual_inspection_items = reportData.visual_inspection_items || reportData.visualInspection;
+          }
+          if (reportData.test_equipment_used || reportData.testEquipment) {
+            payload.test_equipment_used = reportData.test_equipment_used || reportData.testEquipment;
+          }
+          if (reportData.insulation_resistance || reportData.insulationResistance) {
+            payload.insulation_resistance = reportData.insulation_resistance || reportData.insulationResistance;
+          }
+          if (reportData.contact_resistance || reportData.contactResistance) {
+            payload.contact_resistance = reportData.contact_resistance || reportData.contactResistance;
+          }
+          if (reportData.nameplate_data || reportData.nameplate) {
+            payload.nameplate_data = reportData.nameplate_data || reportData.nameplate;
+          }
+          if (reportData.rows) {
+            payload.rows = reportData.rows;
+          }
+          
+          // Only add comments if the table is known to have it
+          // Most tables don't have a top-level comments column
+        }
+        
+        console.log(`  📡 Upserting to ${tableName}...`);
+        
+        // Check if report already exists in Supabase
+        const { data: existingReport } = await supabase
+          .schema('neta_ops')
+          .from(tableName)
+          .select('id')
+          .eq('id', report.id)
+          .single();
+        
+        let result;
+        if (existingReport) {
+          // Update existing report
+          console.log(`  📝 Updating existing report...`);
+          result = await supabase
+            .schema('neta_ops')
+            .from(tableName)
+            .update(payload)
+            .eq('id', report.id)
+            .select();
+        } else {
+          // Insert new report
+          console.log(`  ➕ Creating new report...`);
+          result = await supabase
+            .schema('neta_ops')
+            .from(tableName)
+            .insert(payload)
+            .select();
+          
+          // Create asset entry for new reports
+          if (!result.error) {
+            console.log(`  📦 Creating asset entry...`);
+            const identifier = reportData.identifier || reportData.report_info?.identifier || 
+                              reportData.jobInfo?.identifier || 'Report';
+            
+            const assetData = {
+              name: `${report.title || report.report_type} - ${identifier}`,
+              file_url: `report:/jobs/${report.job_id}/${report.report_type}/${report.id}`,
+              user_id: report.submitted_by || null,
+              status: 'not started',
+              created_at: new Date().toISOString()
+            };
+            
+            const { data: assetResult, error: assetError } = await supabase
+              .schema('neta_ops')
+              .from('assets')
+              .insert(assetData)
+              .select()
+              .single();
+            
+            if (assetError) {
+              console.error(`  ⚠️ Failed to create asset:`, assetError.message);
+              errors.push(`Failed to create asset for ${report.id}: ${assetError.message}`);
+            } else if (assetResult) {
+              console.log(`  ✅ Asset created: ${assetResult.id}`);
+              assetsCreated++;
+              
+              // Link asset to job
+              const { error: linkError } = await supabase
+                .schema('neta_ops')
+                .from('job_assets')
+                .insert({
+                  job_id: report.job_id,
+                  asset_id: assetResult.id,
+                  user_id: report.submitted_by || null
+                });
+              
+              if (linkError) {
+                console.error(`  ⚠️ Failed to link asset to job:`, linkError.message);
+              } else {
+                console.log(`  🔗 Asset linked to job`);
+              }
+            }
+          }
+        }
+        
+        if (result.error) {
+          console.error(`  ❌ Failed to upsert report:`, result.error.message);
+          errors.push(`Failed to upload ${report.id}: ${result.error.message}`);
+          continue;
+        }
+        
+        console.log(`  ✅ Report uploaded successfully`);
+        reportsUploaded++;
+        
+        // Mark report as clean in local database
+        await window.electronAPI.dbQuery('reports', 'markClean', { id: report.id });
+        
+      } catch (err: any) {
+        console.error(`  ❌ Error processing report ${report.id}:`, err.message);
+        errors.push(`Error processing ${report.id}: ${err.message}`);
+      }
+    }
+    
+    console.log('\n=== Sync UP Complete ===');
+    console.log(`📊 Summary:`);
+    console.log(`  - ${reportsUploaded} reports uploaded`);
+    console.log(`  - ${assetsCreated} assets created`);
+    if (errors.length > 0) {
+      console.log(`  - ${errors.length} errors occurred`);
+    }
+    
+    return {
+      success: errors.length === 0,
+      reportsUploaded,
+      assetsCreated,
+      errors: errors.length > 0 ? errors : undefined
+    };
+    
+  } catch (error: any) {
+    console.error('Sync UP failed:', error);
+    return {
+      success: false,
+      errors: [error.message || 'Unknown error during sync up']
+    };
+  }
+}
+
