@@ -44,6 +44,7 @@ export async function initializeSyncService(): Promise<void> {
 
 /**
  * Sync jobs from Supabase to local SQLite
+ * Also fetches customer data from common.customers table
  */
 export async function syncJobsFromSupabase(_userId?: string): Promise<SyncResult> {
   try {
@@ -83,21 +84,50 @@ export async function syncJobsFromSupabase(_userId?: string): Promise<SyncResult
         title: jobs[0].title,
         status: jobs[0].status,
         division: jobs[0].division,
-        location: jobs[0].location
+        location: jobs[0].location,
+        customer_id: jobs[0].customer_id
       });
     }
     
-    // STEP 1: Clear existing jobs from local database
+    // STEP 1: Fetch customer data for all jobs that have customer_id
+    console.log('👤 Fetching customer data from common.customers...');
+    const customerIds = jobs?.filter(j => j.customer_id).map(j => j.customer_id) || [];
+    const uniqueCustomerIds = [...new Set(customerIds)];
+    console.log(`  Found ${uniqueCustomerIds.length} unique customer IDs`);
+    
+    const customerMap: Record<string, any> = {};
+    
+    if (uniqueCustomerIds.length > 0) {
+      const { data: customers, error: customerError } = await supabase
+        .schema('common')
+        .from('customers')
+        .select('id, name, company_name, address, phone, email')
+        .in('id', uniqueCustomerIds);
+      
+      if (customerError) {
+        console.error('⚠️ Error fetching customers (continuing without customer data):', customerError.message);
+      } else if (customers) {
+        console.log(`✅ Fetched ${customers.length} customers`);
+        customers.forEach((c: any) => {
+          customerMap[c.id] = c;
+        });
+      }
+    }
+    
+    // STEP 2: Clear existing jobs from local database
     console.log('🗑️  Clearing old jobs from local database...');
     await window.electronAPI.dbQuery('jobs', 'deleteAll', {});
     
-    // STEP 2: Insert fresh jobs into local SQLite
+    // STEP 3: Insert fresh jobs into local SQLite with customer data
     let jobsInserted = 0;
     if (jobs && jobs.length > 0) {
       console.log(`💾 Inserting ${jobs.length} fresh jobs into local database...`);
       
       for (const job of jobs) {
-        // Map Supabase job fields to local schema
+        // Get customer data if available
+        const customer = job.customer_id ? customerMap[job.customer_id] : null;
+        
+        // Map Supabase job fields to local schema, enriching with customer data
         const localJob = {
           id: job.id,
           job_number: job.job_number,
@@ -106,18 +136,19 @@ export async function syncJobsFromSupabase(_userId?: string): Promise<SyncResult
           status: job.status,
           division: job.division || null,
           location: job.location || null,
-          address: job.address || null,
+          address: job.address || job.site_address || null,
           start_date: job.start_date || null,
           due_date: job.due_date || null,
           completed_date: job.completed_date || null,
           budget: job.budget || null,
           priority: job.priority || null,
           customer_id: job.customer_id || null,
-          customer_name: job.customer_name || null,
-          customer_company: job.customer_company || null,
-          customer_email: job.customer_email || null,
-          customer_phone: job.customer_phone || null,
-          customer_address: job.customer_address || null,
+          // Use customer data from common.customers table
+          customer_name: customer?.name || customer?.company_name || job.customer_name || null,
+          customer_company: customer?.company_name || job.customer_company || null,
+          customer_email: customer?.email || job.customer_email || null,
+          customer_phone: customer?.phone || job.customer_phone || null,
+          customer_address: customer?.address || job.customer_address || job.site_address || null,
           assigned_to: job.assigned_to || null,
           notes: job.notes || null,
           is_dirty: false, // Synced data is not dirty
@@ -126,7 +157,8 @@ export async function syncJobsFromSupabase(_userId?: string): Promise<SyncResult
           updated_at: job.updated_at,
         };
         
-        console.log(`  - Inserting: ${job.job_number} (${job.title})`);
+        const customerInfo = customer ? `(Customer: ${customer.company_name || customer.name})` : '(No customer)';
+        console.log(`  - Inserting: ${job.job_number} ${job.title} ${customerInfo}`);
         const result = await window.electronAPI.dbQuery('jobs', 'upsertJob', localJob);
         if (result.success) {
           jobsInserted++;
@@ -138,7 +170,7 @@ export async function syncJobsFromSupabase(_userId?: string): Promise<SyncResult
       console.warn('⚠️ No jobs found in Supabase. Check your database.');
     }
     
-    console.log(`✅ Successfully synced ${jobsInserted} jobs to local database`);
+    console.log(`✅ Successfully synced ${jobsInserted} jobs to local database (with customer data)`);
     
     return {
       success: true,
