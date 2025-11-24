@@ -296,7 +296,7 @@ const REPORT_TEMPLATES: ReportTemplate[] = [
 export function JobDetail() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
-  
+
   const [job, setJob] = useState<Job | null>(null);
   const [reports, setReports] = useState<LinkedReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -305,15 +305,15 @@ export function JobDetail() {
 
   useEffect(() => {
     loadJobAndReports();
-    
+
     // Listen for sync events to refresh the job detail
     const handleSyncComplete = () => {
       console.log('🔄 Sync completed, refreshing job detail...');
       loadJobAndReports();
     };
-    
+
     window.addEventListener('jobs-synced', handleSyncComplete);
-    
+
     return () => {
       window.removeEventListener('jobs-synced', handleSyncComplete);
     };
@@ -338,10 +338,10 @@ export function JobDetail() {
       console.log('📋 Fetching assets for job ID:', jobId);
       const assetsResult = await window.electronAPI.dbQuery<any[]>('assets', 'getByJobId', { jobId });
       console.log('📋 Assets query result:', assetsResult);
-      
+
       if (assetsResult.success && assetsResult.data) {
         console.log(`✅ Found ${assetsResult.data.length} assets/reports for this job`);
-        
+
         // Log status breakdown
         if (assetsResult.data.length > 0) {
           const statusCounts: Record<string, number> = {};
@@ -350,7 +350,7 @@ export function JobDetail() {
             statusCounts[status] = (statusCounts[status] || 0) + 1;
           });
           console.log('📊 Asset status breakdown:', statusCounts);
-          
+
           // Log first few asset names
           console.log('📄 Sample assets:', assetsResult.data.slice(0, 5).map((a: any) => ({
             name: a.name,
@@ -358,14 +358,14 @@ export function JobDetail() {
             id: a.id.substring(0, 8)
           })));
         }
-        
+
         // Filter and map only report assets (those with file_url starting with "report:")
-        const reportAssets = assetsResult.data.filter((asset: any) => 
-          asset.file_url && asset.file_url.startsWith('report:')
+        const reportAssets = assetsResult.data.filter((asset: any) =>
+          asset.file_url && asset.file_url.startsWith('report:') && asset.status !== 'draft'
         );
-        
+
         console.log(`📋 Filtered to ${reportAssets.length} report assets (from ${assetsResult.data.length} total assets)`);
-        
+
         const mappedReports: LinkedReport[] = reportAssets.map((asset: any) => {
           // Extract report ID from file_url: "report:/jobs/{jobId}/{slug}/{reportId}"
           let reportId = asset.id; // Default to asset ID
@@ -373,7 +373,7 @@ export function JobDetail() {
             const urlParts = asset.file_url.split('/');
             reportId = urlParts[urlParts.length - 1] || asset.id;
           }
-          
+
           return {
             id: reportId, // Use the extracted report ID
             title: asset.name,
@@ -386,9 +386,9 @@ export function JobDetail() {
             sent_at: asset.sent_at,
           };
         });
-        
+
         console.log('📄 Mapped reports with IDs:', mappedReports.slice(0, 3).map(r => ({ title: r.title.substring(0, 30), id: r.id.substring(0, 8) })));
-        
+
         setReports(mappedReports);
       } else {
         console.error('❌ Failed to load assets:', assetsResult.error);
@@ -401,11 +401,90 @@ export function JobDetail() {
     }
   };
 
-  const handleAddReport = (template: ReportTemplate) => {
-    // TODO: Navigate to report creation page
+  const handleAddReport = async (template: ReportTemplate) => {
     console.log('Creating new report from template:', template);
     setShowTemplateMenu(false);
-    alert(`Creating ${template.name} - Report creation coming soon!`);
+
+    try {
+      // Create a new blank report with the template structure
+      const newReportId = crypto.randomUUID();
+
+      // Use the template system to get proper report structure
+      const { getReportTemplate } = await import('../data/reportTemplates');
+      const initialData = getReportTemplate(template.route, job);
+
+      const reportPayload = {
+        id: newReportId,
+        job_id: jobId,
+        title: template.name,
+        report_type: template.route,
+        status: 'draft',
+        report_data: JSON.stringify(initialData),
+        submitted_by: null,
+        submitted_at: null,
+        reviewed_by: null,
+        reviewed_at: null,
+        revision_history: '[]',
+        current_version: 1,
+        review_comments: null,
+        approved_at: null,
+        issued_at: null,
+        sent_at: null,
+        is_dirty: 1,
+        last_sync_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log('💾 Creating new report in database...');
+      const result = await window.electronAPI.dbQuery('technical_reports', 'upsertReport', reportPayload);
+
+      if (result.success) {
+        console.log('✅ Report created successfully!');
+
+        // ALSO create an asset record so it shows up in the list (which reads from assets table)
+        const assetId = crypto.randomUUID();
+        const assetPayload = {
+          id: assetId,
+          name: template.name,
+          file_url: `report:/jobs/${jobId}/${template.route}/${newReportId}`,
+          status: 'not started',
+          approved_at: null,
+          sent_at: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          is_dirty: 1
+        };
+
+        console.log('💾 Creating asset record...');
+        await window.electronAPI.dbQuery('assets', 'upsertAsset', assetPayload);
+
+        // Link asset to job
+        const jobAssetId = crypto.randomUUID();
+        const jobAssetPayload = {
+          id: jobAssetId,
+          job_id: jobId,
+          asset_id: assetId,
+          user_id: null,
+          created_at: new Date().toISOString(),
+          is_dirty: 1
+        };
+
+        console.log('🔗 Linking asset to job...');
+        await window.electronAPI.dbQuery('job_assets', 'upsertJobAsset', jobAssetPayload);
+
+        // Refresh the reports list
+        await loadJobAndReports();
+        // Navigate to the new report for editing
+        navigate(`/jobs/${jobId}/reports/${newReportId}`);
+      } else {
+        console.error('❌ Failed to create report:', result.error);
+        alert(`Failed to create report: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('❌ Error creating report:', error);
+      alert(`Error creating report: ${error}`);
+    }
   };
 
   const handleOpenReport = (report: LinkedReport) => {
@@ -484,7 +563,7 @@ export function JobDetail() {
       <div className="linked-reports-section">
         <div className="section-header">
           <h2>Linked Reports ({reports.length})</h2>
-          <button 
+          <button
             className="add-asset-button"
             onClick={() => setShowTemplateMenu(!showTemplateMenu)}
           >
@@ -503,7 +582,7 @@ export function JobDetail() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="template-search"
               />
-              <button 
+              <button
                 onClick={() => setShowTemplateMenu(false)}
                 className="close-menu-button"
               >

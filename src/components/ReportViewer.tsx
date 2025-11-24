@@ -1,309 +1,402 @@
-import React, { useEffect, useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { StructuredReportRenderer } from './StructuredReportRenderer';
-import { applyReportFormulas, calculateTCF } from '../utils/reportFormulas';
+import { Job } from '../types';
 import './ReportViewer.css';
 
-interface ReportData {
-  id: string;
-  job_id: string;
-  title: string;
-  report_type: string;
-  status: string;
-  report_data: any;
-  created_at: string;
-  updated_at: string;
+interface ReportViewerProps {
+  jobId?: string;
+  reportId?: string;
 }
 
-export function ReportViewer() {
-  const { jobId, reportId } = useParams<{ jobId: string; reportId: string }>();
+export function ReportViewer({ jobId: propJobId, reportId: propReportId }: ReportViewerProps) {
+  const { jobId: paramJobId, reportId: paramReportId } = useParams<{ jobId: string; reportId: string }>();
   const navigate = useNavigate();
-  const [report, setReport] = useState<ReportData | null>(null);
+
+  const jobId = propJobId || paramJobId;
+  const reportId = propReportId || paramReportId;
+
+  const [job, setJob] = useState<Job | null>(null);
+  const [report, setReport] = useState<any>(null);
+  const [reportType, setReportType] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [reportData, setReportData] = useState<any>({});
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    if (reportId) {
-      loadReport();
+    if (jobId && reportId) {
+      loadJobAndReport();
     }
-  }, [reportId]);
+  }, [jobId, reportId]);
 
-
-  const loadReport = async () => {
+  const loadJobAndReport = async () => {
     try {
       setLoading(true);
-      console.log('🔍 Loading report with ID:', reportId);
-      
-      const result = await window.electronAPI.dbQuery('technical_reports', 'getById', { id: reportId });
-      
-      if (result.success && result.data) {
-        const reportRecord = result.data;
-        setReport(reportRecord);
-        
-        // Parse JSON fields
-        const parsedData = typeof reportRecord.report_data === 'string' 
-          ? JSON.parse(reportRecord.report_data) 
-          : reportRecord.report_data;
-        
-        // Apply formulas (TCF corrections, etc.)
-        const dataWithFormulas = applyReportFormulas(parsedData);
-        
-        setReportData(dataWithFormulas);
-        console.log('✅ Report loaded successfully:', reportRecord.title);
-        console.log('📊 Report data structure:', JSON.stringify(parsedData, null, 2));
-      } else {
-        console.error('❌ Report not found in technical_reports table');
-        console.log('💡 This might be a placeholder asset or the report needs to be synced');
-        
-        // Check if we can get any info from the job's assets
-        console.log('🔍 Checking assets table for info...');
-        const assetsResult = await window.electronAPI.dbQuery('assets', 'getByJobId', { jobId });
-        if (assetsResult.success && assetsResult.data) {
-          const matchingAsset = assetsResult.data.find((a: any) => {
-            if (!a.file_url) return false;
-            const urlParts = a.file_url.split('/');
-            const assetReportId = urlParts[urlParts.length - 1];
-            return assetReportId === reportId;
-          });
-          
-          if (matchingAsset) {
-            console.log('📄 Found matching asset:', matchingAsset.name);
-            console.log('   Status:', matchingAsset.status);
-            console.log('   URL:', matchingAsset.file_url);
-          }
+
+      // Load job details
+      const jobResult = await window.electronAPI.dbQuery('jobs', 'getAll', {});
+      if (jobResult.success && jobResult.data) {
+        const currentJob = jobResult.data.find((j: Job) => j.id === jobId);
+        if (currentJob) {
+          setJob(currentJob);
         }
-        
-        alert(`Report not found in local database.\n\nThis report may need to be synced from the online system.\n\nReport ID: ${reportId}\n\nTry syncing again to download this report's data.`);
       }
-    } catch (error) {
-      console.error('Error loading report:', error);
-      alert(`Error loading report: ${error}`);
+
+      // Load report
+      const reportResult = await window.electronAPI.dbQuery('reports', 'getById', { id: reportId });
+      if (reportResult.success && reportResult.data) {
+        const reportData = reportResult.data;
+        setReport(reportData);
+
+        // Determine report type from report_data
+        if (typeof reportData.report_data === 'string') {
+          try {
+            const parsed = JSON.parse(reportData.report_data);
+            setReportType(reportData.report_type || 'unknown');
+            setReport({ ...reportData, parsedData: parsed });
+          } catch (e) {
+            console.error('Failed to parse report_data:', e);
+            setError('Failed to parse report data');
+          }
+        } else {
+          setReportType(reportData.report_type || 'unknown');
+        }
+      } else {
+        setError('Report not found');
+      }
+    } catch (err: any) {
+      console.error('Failed to load report:', err);
+      setError(err.message || 'Failed to load report');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSave = async () => {
-    if (!report) return;
+  const renderReportComponent = () => {
+    if (!report || !reportType) return null;
 
+    const reportData = report.parsedData || (typeof report.report_data === 'string' ? JSON.parse(report.report_data) : report.report_data);
+
+    // For now, use the generic editor for all reports
+    // This preserves ALL the data structure and allows editing
+    return <GenericReportEditor job={job} reportData={reportData} onSave={handleSave} />;
+  };
+
+  const handleSave = async (updatedData: any) => {
     try {
-      const updateData = {
-        id: report.id,
-        report_data: JSON.stringify(reportData),
+      // Update the report in local database
+      const updatedReport = {
+        ...report,
+        report_data: JSON.stringify(updatedData),
         updated_at: new Date().toISOString(),
+        is_dirty: 1
       };
 
-      const result = await window.electronAPI.dbQuery('technical_reports', 'updateReport', updateData);
-      
+      const result = await window.electronAPI.dbQuery('reports', 'updateReport', updatedReport);
+
       if (result.success) {
-        alert('Report saved successfully!');
-        setIsEditMode(false);
-        loadReport(); // Reload to get updated data
+        setReport(updatedReport);
+        // TODO: Add to sync queue for upload to Supabase
+        console.log('Report saved locally');
       } else {
-        alert(`Failed to save report: ${result.error || 'Unknown error'}`);
+        throw new Error(result.error || 'Failed to save report');
       }
-    } catch (error) {
-      console.error('Error saving report:', error);
-      alert(`Error saving report: ${error}`);
+    } catch (err: any) {
+      console.error('Failed to save report:', err);
+      alert(`Failed to save report: ${err.message}`);
     }
-  };
-
-  const handleFieldChange = (path: string, value: any) => {
-    updateFieldValue(path, value);
-  };
-
-  const formatReportType = (reportType: string): string => {
-    // Convert table name like "automatic_transfer_switch_ats_reports" to "Automatic Transfer Switch (ATS)"
-    return reportType
-      .replace(/_reports$/, '') // Remove "_reports" suffix
-      .replace(/_ats$/, ' (ATS)') // Replace "_ats" with " (ATS)"
-      .replace(/_mts$/, ' (MTS)') // Replace "_mts" with " (MTS)"
-      .replace(/_/g, ' ') // Replace remaining underscores with spaces
-      .replace(/\b\w/g, char => char.toUpperCase()); // Capitalize each word
-  };
-
-  const updateFieldValue = (path: string, value: any) => {
-    const keys = path.split(/[\.\[\]]+/).filter(k => k); // Handle both dot notation and array indices
-    const newData = { ...reportData };
-    let current: any = newData;
-
-    // Navigate to the parent of the field we're updating
-    for (let i = 0; i < keys.length - 1; i++) {
-      const key = keys[i];
-      if (!current[key]) {
-        // Check if next key is a number (array index)
-        const nextKey = keys[i + 1];
-        current[key] = /^\d+$/.test(nextKey) ? [] : {};
-      }
-      current = current[key];
-    }
-
-    const lastKey = keys[keys.length - 1];
-    current[lastKey] = value;
-
-    // Special handling for temperature conversions
-    if (path.includes('fahrenheit') || path.includes('temperature.fahrenheit')) {
-      const fahrenheit = parseFloat(value);
-      if (!isNaN(fahrenheit)) {
-        const celsius = Math.round(((fahrenheit - 32) * 5 / 9) * 10) / 10;
-        
-        // Find the temperature object in the path
-        const tempPath = path.substring(0, path.lastIndexOf('.'));
-        const tempKeys = tempPath.split(/[\.\[\]]+/).filter(k => k);
-        let tempObj: any = newData;
-        for (const k of tempKeys) {
-          tempObj = tempObj[k];
-        }
-        
-        if (tempObj) {
-          tempObj.celsius = celsius;
-          
-          // Calculate TCF based on celsius
-          const tcf = calculateTCF(celsius);
-          tempObj.tcf = tcf;
-        }
-      }
-    }
-    
-    // Special handling for celsius conversions
-    if (path.includes('celsius') || path.includes('temperature.celsius')) {
-      const celsius = parseFloat(value);
-      if (!isNaN(celsius)) {
-        const fahrenheit = Math.round((celsius * 9 / 5 + 32) * 10) / 10;
-        
-        // Find the temperature object in the path
-        const tempPath = path.substring(0, path.lastIndexOf('.'));
-        const tempKeys = tempPath.split(/[\.\[\]]+/).filter(k => k);
-        let tempObj: any = newData;
-        for (const k of tempKeys) {
-          tempObj = tempObj[k];
-        }
-        
-        if (tempObj) {
-          tempObj.fahrenheit = fahrenheit;
-          
-          // Calculate TCF based on celsius
-          const tcf = calculateTCF(celsius);
-          tempObj.tcf = tcf;
-        }
-      }
-    }
-
-    // Apply formulas after updating (TCF corrections, etc.)
-    const dataWithFormulas = applyReportFormulas(newData);
-    setReportData(dataWithFormulas);
-  };
-
-  // Temperature Correction Factor calculation
-  const calculateTCF = (celsius: number): number => {
-    // TCF table based on NETA standards
-    const tcfTable: { [key: number]: number } = {
-      0: 0.25, 5: 0.33, 10: 0.45, 15: 0.63, 20: 1.0,
-      25: 1.25, 30: 1.66, 35: 2.0, 40: 2.5, 45: 3.0,
-      50: 4.0, 55: 5.0, 60: 6.0
-    };
-    
-    // Find exact match or interpolate
-    if (tcfTable[celsius]) {
-      return tcfTable[celsius];
-    }
-    
-    // Find surrounding values for interpolation
-    const temps = Object.keys(tcfTable).map(Number).sort((a, b) => a - b);
-    let lower = temps[0];
-    let upper = temps[temps.length - 1];
-    
-    for (let i = 0; i < temps.length - 1; i++) {
-      if (celsius >= temps[i] && celsius <= temps[i + 1]) {
-        lower = temps[i];
-        upper = temps[i + 1];
-        break;
-      }
-    }
-    
-    // Linear interpolation
-    const ratio = (celsius - lower) / (upper - lower);
-    const tcf = tcfTable[lower] + ratio * (tcfTable[upper] - tcfTable[lower]);
-    return Math.round(tcf * 100) / 100;
   };
 
   if (loading) {
     return (
-      <div className="report-viewer-container">
+      <div className="report-viewer">
         <div className="loading">Loading report...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="report-viewer">
+        <div className="error">
+          <h2>Report Error</h2>
+          <p>{error}</p>
+          <button onClick={() => navigate('/')} className="btn-secondary">
+            Back to Jobs
+          </button>
+        </div>
       </div>
     );
   }
 
   if (!report) {
     return (
-      <div className="report-viewer-container">
-        <div className="error">Report not found</div>
-        <button onClick={() => navigate(`/job/${jobId}`)} className="btn-secondary">
-          Back to Job
-        </button>
+      <div className="report-viewer">
+        <div className="error">
+          <h2>Report Not Found</h2>
+          <button onClick={() => navigate('/')} className="btn-secondary">
+            Back to Jobs
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="report-viewer-container">
+    <div className="report-viewer">
       <div className="report-header">
-        <div className="header-left">
-          <button onClick={() => navigate(`/job/${jobId}`)} className="btn-back">
-            ← Back to Job
-          </button>
-          <div className="report-title-section">
-            <h1>{report.title}</h1>
-            <span className="report-type-badge">{formatReportType(report.report_type)}</span>
-            <span className={`status-badge status-${report.status}`}>{report.status}</span>
-          </div>
-        </div>
-        <div className="header-right">
-          {isEditMode ? (
-            <>
-              <button onClick={() => setIsEditMode(false)} className="btn-secondary">
-                Cancel
-              </button>
-              <button onClick={handleSave} className="btn-primary">
-                Save Changes
-              </button>
-            </>
-          ) : (
-            <button onClick={() => setIsEditMode(true)} className="btn-primary">
-              Edit Report
-            </button>
-          )}
+        <button onClick={() => navigate('/')} className="back-button">
+          ← Back to Jobs
+        </button>
+        <div className="report-info">
+          <h1>{report.title || `Report ${reportId?.substring(0, 8)}`}</h1>
+          <span className="report-type">{reportType.replace(/-/g, ' ').toUpperCase()}</span>
         </div>
       </div>
 
       <div className="report-content">
-        <div className="report-metadata">
-          <div className="metadata-item">
-            <strong>Created:</strong> {new Date(report.created_at).toLocaleString()}
-          </div>
-          <div className="metadata-item">
-            <strong>Last Updated:</strong> {new Date(report.updated_at).toLocaleString()}
-          </div>
-        </div>
-
-        {Object.keys(reportData).length === 0 ? (
-          <div className="empty-report">
-            <p>This report has no data yet</p>
-            <button onClick={() => setIsEditMode(true)} className="btn-primary">
-              Start Editing
-            </button>
-          </div>
-        ) : (
-          <StructuredReportRenderer
-            data={reportData}
-            isEditMode={isEditMode}
-            onFieldChange={handleFieldChange}
-          />
-        )}
+        {renderReportComponent()}
       </div>
     </div>
   );
 }
 
+// List of calculated/formula fields that should be read-only
+const CALCULATED_FIELDS = [
+  'celsius', 'tcf', 'correctionFactor', 'correctionfactor',
+  'corrected', 'dielectricAbsorption', 'polarizationIndex', 'polarizationindex',
+  'ratio', 'calculated', 'formula', 'dielectric_absorption',
+  'temp_corrected', 'temperature_corrected'
+];
+
+// Helper to check if a field is calculated
+const isCalculatedField = (key: string, path: string[]): boolean => {
+  const fullKey = [...path, key].join('.');
+  const fieldName = key.toLowerCase();
+
+  // Check if field name indicates it's calculated
+  if (CALCULATED_FIELDS.some(calc => fieldName.includes(calc))) {
+    return true;
+  }
+
+  // Check specific path patterns for calculated fields
+  if (fullKey.includes('temperature.celsius') ||
+      fullKey.includes('temperature.tcf') ||
+      fullKey.includes('temperature.correctionFactor')) {
+    return true;
+  }
+
+  if (fullKey.includes('corrected') ||
+      fullKey.includes('dielectricAbsorption') ||
+      fullKey.includes('polarizationIndex') ||
+      fullKey.includes('dielectric_absorption') ||
+      fullKey.includes('polarization_index')) {
+    return true;
+  }
+
+  // Check for temperature corrected values in insulation tests
+  if (fullKey.includes('insulation_resistance') && fullKey.includes('corrected')) {
+    return true;
+  }
+
+  return false;
+};
+
+// Generic report editor that works with any report data structure
+function GenericReportEditor({ job, reportData, onSave }: { job: Job | null; reportData: any; onSave: (data: any) => void }) {
+  const [editedData, setEditedData] = useState<any>(reportData);
+  const [isEditing, setIsEditing] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
+  // Debug complex reports
+  useEffect(() => {
+    if (reportData) {
+      const dataSize = JSON.stringify(reportData).length;
+      const hasComplexArrays = Object.values(reportData).some((val: any) =>
+        Array.isArray(val) && val.length > 5 && typeof val[0] === 'object' && val[0] !== null
+      );
+      const arrayCount = Object.values(reportData).filter((val: any) => Array.isArray(val)).length;
+
+      console.log('📊 ReportViewer data analysis:', {
+        dataSize: `${(dataSize / 1024).toFixed(2)}KB`,
+        totalKeys: Object.keys(reportData).length,
+        arrayCount,
+        hasComplexArrays,
+        largestArray: Math.max(...Object.values(reportData).filter((val: any) => Array.isArray(val)).map((arr: any) => arr.length), 0)
+      });
+
+      if (hasComplexArrays) {
+        console.log('🔍 Complex arrays found:', Object.entries(reportData).filter(([key, val]) => Array.isArray(val) && val.length > 5));
+      }
+    }
+  }, [reportData]);
+
+  const handleFieldChange = (path: string[], value: any) => {
+    const newData = { ...editedData };
+    let current = newData;
+    for (let i = 0; i < path.length - 1; i++) {
+      if (!current[path[i]]) current[path[i]] = {};
+      current = current[path[i]];
+    }
+    current[path[path.length - 1]] = value;
+    setEditedData(newData);
+  };
+
+  const renderField = (key: string, value: any, path: string[] = []) => {
+    const fullPath = [...path, key];
+    const pathString = fullPath.join('.');
+
+    if (value === null || value === undefined) {
+      return (
+        <div key={pathString} className="field-row">
+          <label>{key}:</label>
+          <input
+            type="text"
+            value=""
+            placeholder="null"
+            onChange={(e) => handleFieldChange(fullPath, e.target.value || null)}
+          />
+        </div>
+      );
+    }
+
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      const isCalculated = isCalculatedField(key, path);
+
+      return (
+        <div key={pathString} className={`field-row ${isCalculated ? 'calculated-field' : ''}`}>
+          <label>{key}:{isCalculated && <span className="formula-indicator"> (Formula will fill when synced)</span>}</label>
+          <input
+            type={typeof value === 'number' ? 'number' : 'text'}
+            value={String(value ?? '')}
+            onChange={(e) => !isCalculated && handleFieldChange(fullPath, typeof value === 'number' ? Number(e.target.value) : e.target.value)}
+            readOnly={isCalculated}
+            className={isCalculated ? 'calculated-input' : ''}
+          />
+        </div>
+      );
+    }
+
+    if (Array.isArray(value)) {
+      const maxArrayItems = expandedSections.has(pathString) ? 100 : 10; // Show more when expanded
+      const isExpanded = expandedSections.has(pathString);
+
+      return (
+        <div key={pathString} className="field-group">
+          <h4 onClick={() => toggleSection(pathString)} style={{cursor: 'pointer'}}>
+            {key} ({value.length} items) {value.length > 10 && (isExpanded ? '▼' : '▶')}
+          </h4>
+          {value.slice(0, maxArrayItems).map((item, index) => (
+            <div key={`${pathString}[${index}]`} className="array-item">
+              <h5>Item {index}</h5>
+              {renderObjectFields(item as any, [...fullPath, index.toString()], undefined, expandedSections.has(pathString))}
+            </div>
+          ))}
+          {value.length > maxArrayItems && (
+            <div className="field-row">
+              <label>⚠️ Array truncated:</label>
+              <span>{value.length - maxArrayItems} more items - click header to expand</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (typeof value === 'object') {
+      const objectKeys = Object.keys(value);
+      const maxObjectFields = expandedSections.has(pathString) ? 200 : 30; // Show more when expanded
+      const isExpanded = expandedSections.has(pathString);
+      const shouldTruncate = objectKeys.length > maxObjectFields;
+
+      return (
+        <div key={pathString} className="field-group">
+          <h4 onClick={() => shouldTruncate && toggleSection(pathString)} style={{cursor: shouldTruncate ? 'pointer' : 'default'}}>
+            {key} ({objectKeys.length} fields) {shouldTruncate && (isExpanded ? '▼' : '▶')}
+          </h4>
+          {renderObjectFields(value as any, fullPath, maxObjectFields, isExpanded)}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const renderObjectFields = (obj: any, path: string[] = [], maxFields?: number, isExpanded?: boolean) => {
+    if (!obj || typeof obj !== 'object') return null;
+
+    const entries = Object.entries(obj);
+    const limit = maxFields || 50; // Default limit
+
+    if (entries.length > limit && !isExpanded) {
+      console.warn(`⚠️ Large object detected (${entries.length} fields), limiting display to ${limit} fields`);
+      return (
+        <>
+          {entries.slice(0, limit).map(([key, value]) => renderField(key, value, path))}
+          <div className="field-row">
+            <label>⚠️ Object truncated:</label>
+            <span>{entries.length - limit} more fields - expand section to see all</span>
+          </div>
+        </>
+      );
+    }
+
+    return entries.map(([key, value]) => renderField(key, value, path));
+  };
+
+  const handleSave = () => {
+    onSave(editedData);
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditedData(reportData);
+    setIsEditing(false);
+  };
+
+  const toggleSection = (sectionKey: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(sectionKey)) {
+      newExpanded.delete(sectionKey);
+    } else {
+      newExpanded.add(sectionKey);
+    }
+    setExpandedSections(newExpanded);
+  };
+
+    return (
+      <div className="generic-report-editor">
+        <div className="editor-header">
+          <h3>Report Editor</h3>
+          <div className="editor-controls">
+            {!isEditing ? (
+              <button onClick={() => setIsEditing(true)} className="btn-primary">
+                Edit Report
+              </button>
+            ) : (
+              <>
+                <button onClick={handleSave} className="btn-primary">
+                  Save Changes
+                </button>
+                <button onClick={handleCancel} className="btn-secondary">
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+      <div className="editor-content">
+        {renderObjectFields(editedData, [], 100, true)}
+      </div>
+
+      {!isEditing && (
+        <div className="raw-data-view">
+          <h4>Raw Data (Read-only)</h4>
+          <pre className="report-json">
+            {JSON.stringify(editedData, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}

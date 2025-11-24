@@ -59,37 +59,37 @@ function initializeDatabase() {
   try {
     const userDataPath = app.getPath('userData');
     const dbPath = path.join(userDataPath, 'field-tech.db');
-    
+
     console.log('=== DATABASE INITIALIZATION ===');
     console.log('User data path:', userDataPath);
     console.log('Database path:', dbPath);
     console.log('Working directory:', __dirname);
-    
+
     db = new Database(dbPath);
     db.pragma('journal_mode = WAL');
     console.log('Database connection established');
-    
+
     // Read and execute schema
     const schemaPath = path.join(__dirname, 'src/database/schema.sql');
     console.log('Looking for schema at:', schemaPath);
     console.log('Schema exists:', fs.existsSync(schemaPath));
-    
+
     if (fs.existsSync(schemaPath)) {
       const schema = fs.readFileSync(schemaPath, 'utf-8');
       console.log('Schema file loaded, length:', schema.length);
       db.exec(schema);
       console.log('✅ Database schema initialized successfully');
-      
+
       // Verify tables were created
       const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
       console.log('Tables created:', tables.map(t => t.name).join(', '));
     } else {
       console.error('❌ Schema file not found at:', schemaPath);
-      console.log('Files in src/database:', fs.existsSync(path.join(__dirname, 'src/database')) 
+      console.log('Files in src/database:', fs.existsSync(path.join(__dirname, 'src/database'))
         ? fs.readdirSync(path.join(__dirname, 'src/database'))
         : 'directory not found');
     }
-    
+
     console.log('=== DATABASE READY ===');
   } catch (error) {
     console.error('❌ Failed to initialize database:', error);
@@ -149,10 +149,12 @@ function startNetworkMonitoring() {
   // Check network status immediately
   checkNetworkStatus();
 
-  // Check every 30 seconds
+  // Check network status periodically
   networkCheckInterval = setInterval(() => {
     checkNetworkStatus();
-  }, 30000);
+    // Disabled API health check - app is offline-first and doesn't require API server
+    // checkApiReachability();
+  }, 30000); // Check every 30 seconds
 }
 
 /**
@@ -160,7 +162,7 @@ function startNetworkMonitoring() {
  */
 function checkNetworkStatus() {
   const online = net.isOnline();
-  
+
   // Send status to renderer
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('network-status-changed', {
@@ -169,10 +171,11 @@ function checkNetworkStatus() {
     });
   }
 
+  // Disabled - app is offline-first and doesn't require API server
   // If online, check API reachability
-  if (online) {
-    checkApiReachability();
-  }
+  // if (online) {
+  //   checkApiReachability();
+  // }
 }
 
 /**
@@ -183,7 +186,7 @@ async function checkApiReachability() {
     // Get API URL from settings
     // This would normally be stored in electron-store or similar
     const apiUrl = process.env.API_BASE_URL || 'http://localhost:8000';
-    
+
     const request = net.request({
       method: 'GET',
       url: `${apiUrl}/health`,
@@ -192,7 +195,7 @@ async function checkApiReachability() {
 
     request.on('response', (response) => {
       const apiReachable = response.statusCode === 200;
-      
+
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('api-status-changed', {
           reachable: apiReachable,
@@ -203,7 +206,7 @@ async function checkApiReachability() {
 
     request.on('error', (error) => {
       console.error('API health check failed:', error);
-      
+
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('api-status-changed', {
           reachable: false,
@@ -254,9 +257,9 @@ ipcMain.handle('trigger-sync', async () => {
     return { success: true, message: 'Sync started' };
   } catch (error) {
     console.error('Sync failed:', error);
-    return { 
-      success: false, 
-      message: error.message || 'Sync failed' 
+    return {
+      success: false,
+      message: error.message || 'Sync failed'
     };
   }
 });
@@ -269,9 +272,9 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
     if (!db) {
       throw new Error('Database not initialized');
     }
-    
+
     console.log(`DB Query: ${table}.${method}`, params);
-    
+
     if (table === 'jobs') {
       if (method === 'getAll' || method === 'getJobs') {
         const stmt = db.prepare('SELECT * FROM jobs ORDER BY created_at DESC');
@@ -286,14 +289,14 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
       } else if (method === 'upsertJob') {
         const job = params;
         console.log('Upserting job:', job.job_number, job.title);
-        
+
         try {
           // Convert boolean values to 0/1 for SQLite
           const jobData = {
             ...job,
             is_dirty: job.is_dirty ? 1 : 0
           };
-          
+
           const stmt = db.prepare(`
             INSERT INTO jobs (
               id, job_number, title, description, status, division, location, 
@@ -331,7 +334,7 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
               notes = excluded.notes,
               updated_at = excluded.updated_at
           `);
-          
+
           const info = stmt.run(jobData);
           console.log('Insert successful. Changes:', info.changes);
           return { success: true };
@@ -350,7 +353,7 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
       } else if (method === 'upsertAsset') {
         const asset = params;
         console.log('Upserting asset:', asset.name);
-        
+
         try {
           const stmt = db.prepare(`
             INSERT INTO assets (
@@ -365,7 +368,7 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
               approved_at = excluded.approved_at,
               sent_at = excluded.sent_at
           `);
-          
+
           const info = stmt.run(asset);
           console.log('Asset upsert successful. Changes:', info.changes);
           return { success: true };
@@ -376,18 +379,18 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
       } else if (method === 'getByJobId') {
         const { jobId } = params;
         console.log('📋 Fetching assets for job:', jobId);
-        
+
         try {
           // First, check if there are any job_assets for this job
           const checkJobAssets = db.prepare('SELECT COUNT(*) as count FROM job_assets WHERE job_id = ?');
           const jobAssetsCount = checkJobAssets.get(jobId);
           console.log(`  Found ${jobAssetsCount.count} job_asset links for this job`);
-          
+
           // Check total assets in database
           const checkAssets = db.prepare('SELECT COUNT(*) as count FROM assets');
           const assetsCount = checkAssets.get();
           console.log(`  Total assets in database: ${assetsCount.count}`);
-          
+
           // Now run the actual query
           const stmt = db.prepare(`
             SELECT a.*
@@ -396,14 +399,14 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
             WHERE ja.job_id = ?
             ORDER BY a.created_at DESC
           `);
-          
+
           const data = stmt.all(jobId);
           console.log(`✅ Found ${data.length} assets for job ${jobId}`);
-          
+
           if (data.length > 0) {
             console.log(`  Sample asset: ${data[0].name} (${data[0].status})`);
           }
-          
+
           return { success: true, data };
         } catch (err) {
           console.error('❌ Error fetching assets by job ID:', err);
@@ -420,7 +423,7 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
       } else if (method === 'upsertJobAsset') {
         const jobAsset = params;
         console.log('Upserting job_asset link:', jobAsset.job_id, '->', jobAsset.asset_id);
-        
+
         try {
           const stmt = db.prepare(`
             INSERT INTO job_assets (
@@ -433,7 +436,7 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
               asset_id = excluded.asset_id,
               user_id = excluded.user_id
           `);
-          
+
           const info = stmt.run(jobAsset);
           return { success: true };
         } catch (err) {
@@ -458,8 +461,8 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
         const data = stmt.all();
         console.log(`Found ${data.length} reports in database (showing first 10)`);
         if (data.length > 0) {
-          console.log('Sample reports:', data.map(r => ({ 
-            id: r.id.substring(0, 8) + '...', 
+          console.log('Sample reports:', data.map(r => ({
+            id: r.id.substring(0, 8) + '...',
             title: r.title.substring(0, 30)
           })));
         }
@@ -485,7 +488,7 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
       } else if (method === 'updateReport') {
         const report = params;
         console.log('Updating report:', report.id);
-        
+
         try {
           const stmt = db.prepare(`
             UPDATE technical_reports 
@@ -494,13 +497,13 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
                 is_dirty = 1
             WHERE id = @id
           `);
-          
+
           const info = stmt.run({
             id: report.id,
             report_data: report.report_data,
             updated_at: report.updated_at
           });
-          
+
           console.log('Report update successful. Changes:', info.changes);
           return { success: true };
         } catch (err) {
@@ -510,7 +513,7 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
       } else if (method === 'upsertReport') {
         const report = params;
         console.log('Upserting report:', report.title);
-        
+
         try {
           const stmt = db.prepare(`
             INSERT INTO technical_reports (
@@ -544,7 +547,7 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
               last_sync_at = excluded.last_sync_at,
               updated_at = excluded.updated_at
           `);
-          
+
           const info = stmt.run(report);
           console.log('Report upsert successful. Changes:', info.changes);
           return { success: true };
@@ -563,7 +566,7 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
       } else if (method === 'upsertTemplate') {
         const template = params;
         console.log('Upserting report template:', template.name);
-        
+
         try {
           const stmt = db.prepare(`
             INSERT INTO report_templates (
@@ -582,7 +585,7 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
               last_sync_at = excluded.last_sync_at,
               updated_at = excluded.updated_at
           `);
-          
+
           const info = stmt.run(template);
           console.log('Template upsert successful. Changes:', info.changes);
           return { success: true };
@@ -598,13 +601,13 @@ ipcMain.handle('db-query', async (event, { table, method, params }) => {
         return { success: true, data };
       }
     }
-    
+
     return { success: false, error: 'Method not implemented' };
   } catch (error) {
     console.error('Database query failed:', error);
-    return { 
-      success: false, 
-      error: error.message || 'Query failed' 
+    return {
+      success: false,
+      error: error.message || 'Query failed'
     };
   }
 });
@@ -617,7 +620,7 @@ ipcMain.handle('get-supabase-config', async () => {
     console.log('📡 Supabase config requested');
     console.log('  - URL exists:', !!process.env.SUPABASE_URL);
     console.log('  - Key exists:', !!process.env.SUPABASE_ANON_KEY);
-    
+
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
       console.error('❌ Missing Supabase credentials in environment');
       return {
@@ -625,7 +628,7 @@ ipcMain.handle('get-supabase-config', async () => {
         error: 'SUPABASE_URL or SUPABASE_ANON_KEY not found in .env file'
       };
     }
-    
+
     return {
       success: true,
       url: process.env.SUPABASE_URL,
@@ -633,9 +636,9 @@ ipcMain.handle('get-supabase-config', async () => {
     };
   } catch (error) {
     console.error('Failed to get Supabase config:', error);
-    return { 
-      success: false, 
-      error: error.message || 'Failed to get Supabase config' 
+    return {
+      success: false,
+      error: error.message || 'Failed to get Supabase config'
     };
   }
 });
@@ -659,9 +662,9 @@ ipcMain.handle('get-settings', async () => {
     };
   } catch (error) {
     console.error('Failed to get settings:', error);
-    return { 
-      success: false, 
-      error: error.message || 'Failed to get settings' 
+    return {
+      success: false,
+      error: error.message || 'Failed to get settings'
     };
   }
 });
@@ -676,9 +679,9 @@ ipcMain.handle('update-settings', async (event, { key, value }) => {
     return { success: true };
   } catch (error) {
     console.error('Failed to update setting:', error);
-    return { 
-      success: false, 
-      error: error.message || 'Failed to update setting' 
+    return {
+      success: false,
+      error: error.message || 'Failed to update setting'
     };
   }
 });
@@ -688,7 +691,7 @@ ipcMain.handle('update-settings', async (event, { key, value }) => {
  */
 ipcMain.handle('select-file', async () => {
   const { dialog } = require('electron');
-  
+
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile', 'multiSelections'],
     filters: [
@@ -729,7 +732,7 @@ app.whenReady().then(() => {
  */
 app.on('window-all-closed', () => {
   stopNetworkMonitoring();
-  
+
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -740,7 +743,7 @@ app.on('window-all-closed', () => {
  */
 app.on('will-quit', () => {
   stopNetworkMonitoring();
-  
+
   // Close database connection
   if (db) {
     db.close();

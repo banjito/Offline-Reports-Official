@@ -177,7 +177,22 @@ function renderFields(fields: any, basePath: string, isEditMode: boolean, onFiel
 
 // Render data as HTML table
 function renderTable(rows: any[], basePath: string, title: string, isEditMode: boolean, onFieldChange: (path: string, value: any) => void) {
-  if (!rows || rows.length === 0) return <div className="empty-table">No data</div>;
+  if (!rows || rows.length === 0) {
+    if (!isEditMode) return <div className="empty-table">No data</div>;
+    
+    // In edit mode, show button to add first row
+    return (
+      <div className="empty-table">
+        <p>No rows yet</p>
+        <button 
+          onClick={() => handleAddRow(basePath, onFieldChange)} 
+          className="btn-add-row"
+        >
+          + Add Row
+        </button>
+      </div>
+    );
+  }
   
   // Get column headers from first row
   const firstRow = rows[0];
@@ -193,6 +208,7 @@ function renderTable(rows: any[], basePath: string, title: string, isEditMode: b
             {columns.map(col => (
               <th key={col}>{formatKey(col)}</th>
             ))}
+            {isEditMode && <th className="actions-column">Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -231,12 +247,60 @@ function renderTable(rows: any[], basePath: string, title: string, isEditMode: b
                   </td>
                 );
               })}
+              {isEditMode && (
+                <td className="actions-cell">
+                  <button
+                    onClick={() => handleRemoveRow(basePath, rowIdx, onFieldChange)}
+                    className="btn-remove-row"
+                    title="Remove row"
+                  >
+                    ✕
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
       </table>
+      {isEditMode && (
+        <button 
+          onClick={() => handleAddRow(basePath, onFieldChange, firstRow)} 
+          className="btn-add-row"
+        >
+          + Add Row
+        </button>
+      )}
     </div>
   );
+}
+
+// Helper functions for row management
+function handleAddRow(basePath: string, onFieldChange: (path: string, value: any) => void, templateRow?: any) {
+  // Create a new empty row based on template
+  const newRow: any = {};
+  
+  if (templateRow) {
+    Object.keys(templateRow).forEach(key => {
+      const value = templateRow[key];
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        // Copy structure for nested objects
+        newRow[key] = Object.keys(value).reduce((obj, k) => ({ ...obj, [k]: '' }), {});
+      } else {
+        newRow[key] = '';
+      }
+    });
+  } else {
+    // Generic row for empty tables
+    newRow.value = '';
+  }
+  
+  // Trigger adding to the array
+  onFieldChange(`${basePath}._ADD_ROW_`, newRow);
+}
+
+function handleRemoveRow(basePath: string, rowIndex: number, onFieldChange: (path: string, value: any) => void) {
+  // Trigger removal from the array
+  onFieldChange(`${basePath}._REMOVE_ROW_${rowIndex}_`, null);
 }
 
 // Render nested sections

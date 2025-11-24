@@ -364,13 +364,57 @@ export async function syncFormInstancesForJob(jobId: string): Promise<SyncResult
     
     for (const instance of instances) {
       // Map custom_form_instances to technical_reports structure
+      // Preserve template metadata in report_data so we can sync back up correctly
+      
+      // Ensure instance.data is properly parsed if it's a string
+      let formData: any = {};
+      if (typeof instance.data === 'string') {
+        try {
+          formData = JSON.parse(instance.data);
+        } catch (e) {
+          console.warn('Failed to parse instance.data as JSON:', e);
+          formData = {};
+        }
+      } else if (instance.data && typeof instance.data === 'object') {
+        // Deep clone to ensure we preserve all nested structures
+        formData = JSON.parse(JSON.stringify(instance.data));
+      }
+      
+      // Preserve ALL data including sections with all their nested structures (rows, fields, values)
+      // Add metadata fields at the top level for syncing back up
+      const enrichedData = {
+        ...formData, // This preserves jobInfo and sections with all nested data
+        // Preserve template metadata for syncing back up
+        template_id: instance.template_id || null,
+        template_name: instance.template_name || 'Custom Form',
+        neta_section: instance.neta_section || null,
+        status: instance.status || 'PASS', // Preserve PASS/FAIL status
+      };
+      
+      // Log for debugging - check if sections are present
+      if (enrichedData.sections) {
+        const sectionIds = Object.keys(enrichedData.sections);
+        console.log(`  - Form has ${sectionIds.length} sections:`, sectionIds);
+        // Log first section structure to verify data is preserved
+        if (sectionIds.length > 0) {
+          const firstSection = enrichedData.sections[sectionIds[0]];
+          if (firstSection.rows) {
+            console.log(`    - Section "${sectionIds[0]}" has ${firstSection.rows.length} rows`);
+          } else if (firstSection.fields) {
+            console.log(`    - Section "${sectionIds[0]}" has fields:`, Object.keys(firstSection.fields));
+          } else if (firstSection.value !== undefined) {
+            console.log(`    - Section "${sectionIds[0]}" has value`);
+          }
+        }
+      }
+
       const localReport = {
         id: instance.id,
         job_id: instance.job_id,
         title: instance.template_name || 'Custom Form',
         report_type: instance.neta_section || 'custom_form',
         status: 'draft', // Default status for form instances
-        report_data: instance.data ? JSON.stringify(instance.data) : '{}',
+        report_data: JSON.stringify(enrichedData),
         submitted_by: instance.user_id || null,
         submitted_at: null,
         reviewed_by: null,
@@ -493,13 +537,40 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
           
           let formInstancesInserted = 0;
           for (const instance of allFormInstances) {
+            // Preserve template metadata in report_data so we can sync back up correctly
+            
+            // Ensure instance.data is properly parsed if it's a string
+            let formData: any = {};
+            if (typeof instance.data === 'string') {
+              try {
+                formData = JSON.parse(instance.data);
+              } catch (e) {
+                console.warn('Failed to parse instance.data as JSON:', e);
+                formData = {};
+              }
+            } else if (instance.data && typeof instance.data === 'object') {
+              // Deep clone to ensure we preserve all nested structures
+              formData = JSON.parse(JSON.stringify(instance.data));
+            }
+            
+            // Preserve ALL data including sections with all their nested structures (rows, fields, values)
+            // Add metadata fields at the top level for syncing back up
+            const enrichedData = {
+              ...formData, // This preserves jobInfo and sections with all nested data
+              // Preserve template metadata for syncing back up
+              template_id: instance.template_id || null,
+              template_name: instance.template_name || 'Custom Form',
+              neta_section: instance.neta_section || null,
+              status: instance.status || 'PASS', // Preserve PASS/FAIL status
+            };
+
             const localReport = {
               id: instance.id,
               job_id: instance.job_id,
               title: instance.template_name || 'Custom Form',
               report_type: instance.neta_section || 'custom_form',
               status: 'draft',
-              report_data: instance.data ? JSON.stringify(instance.data) : '{}',
+              report_data: JSON.stringify(enrichedData),
               submitted_by: instance.user_id || null,
               submitted_at: null,
               reviewed_by: null,

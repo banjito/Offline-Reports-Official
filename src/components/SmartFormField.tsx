@@ -14,10 +14,10 @@ export function SmartFormField({ fieldKey, value, onChange, isEditMode, fieldCon
   // Get dropdown options if available
   const dropdownOptions = getDropdownOptionsForField(fieldKey, fieldConfig);
   const unitOptions = getUnitOptionsForField(fieldKey, fieldConfig);
-  
+
   // Render label
   const label = formatFieldLabel(fieldKey);
-  
+
   if (!isEditMode) {
     // View mode - just display the value
     return (
@@ -27,16 +27,18 @@ export function SmartFormField({ fieldKey, value, onChange, isEditMode, fieldCon
       </div>
     );
   }
-  
+
   // Edit mode - render appropriate input type
-  
+
   // Unit dropdown (MΩ, kΩ, etc.)
   if (unitOptions) {
+    // Ensure value is a string (not object/array)
+    const stringValue = typeof value === 'string' ? value : '';
     return (
       <div className="field-row">
         <label className="field-label">{label}:</label>
         <select
-          value={value || ''}
+          value={stringValue || ''}
           onChange={(e) => onChange(e.target.value)}
           className="field-select unit-select"
         >
@@ -50,14 +52,16 @@ export function SmartFormField({ fieldKey, value, onChange, isEditMode, fieldCon
       </div>
     );
   }
-  
+
   // Regular dropdown (Pass/Fail, Satisfactory/Unsatisfactory, etc.)
   if (dropdownOptions) {
+    // Ensure value is a string (not object/array)
+    const stringValue = typeof value === 'string' ? value : '';
     return (
       <div className="field-row">
         <label className="field-label">{label}:</label>
         <select
-          value={value || ''}
+          value={stringValue || ''}
           onChange={(e) => onChange(e.target.value)}
           className="field-select"
         >
@@ -70,7 +74,7 @@ export function SmartFormField({ fieldKey, value, onChange, isEditMode, fieldCon
       </div>
     );
   }
-  
+
   // Number field (if field name suggests numeric data)
   if (isNumericField(fieldKey, value)) {
     return (
@@ -87,7 +91,7 @@ export function SmartFormField({ fieldKey, value, onChange, isEditMode, fieldCon
       </div>
     );
   }
-  
+
   // Date field
   if (isDateField(fieldKey)) {
     return (
@@ -102,7 +106,7 @@ export function SmartFormField({ fieldKey, value, onChange, isEditMode, fieldCon
       </div>
     );
   }
-  
+
   // Textarea for long text fields
   if (isLongTextField(fieldKey)) {
     return (
@@ -117,7 +121,7 @@ export function SmartFormField({ fieldKey, value, onChange, isEditMode, fieldCon
       </div>
     );
   }
-  
+
   // Default: text input
   return (
     <div className="field-row">
@@ -155,12 +159,12 @@ function formatValue(value: any): string {
 
 function isNumericField(fieldKey: string, value: any): boolean {
   const lowerKey = fieldKey.toLowerCase();
-  
+
   // Check if value is already a number
   if (typeof value === 'number') {
     return true;
   }
-  
+
   // Check if field name suggests numeric data
   const numericKeywords = [
     'voltage', 'current', 'resistance', 'temperature', 'humidity',
@@ -168,7 +172,7 @@ function isNumericField(fieldKey: string, value: any): boolean {
     'celsius', 'fahrenheit', 'power', 'frequency', 'kv', 'mv',
     'ag', 'bg', 'cg', 'ab', 'bc', 'ca', 'an', 'bn', 'cn', // Common phase labels
   ];
-  
+
   return numericKeywords.some(keyword => lowerKey.includes(keyword));
 }
 
@@ -179,9 +183,9 @@ function isDateField(fieldKey: string): boolean {
 
 function isLongTextField(fieldKey: string): boolean {
   const lowerKey = fieldKey.toLowerCase();
-  return lowerKey.includes('comment') || 
-         lowerKey.includes('note') || 
-         lowerKey.includes('description') ||
-         lowerKey.includes('remarks');
+  return lowerKey.includes('comment') ||
+    lowerKey.includes('note') ||
+    lowerKey.includes('description') ||
+    lowerKey.includes('remarks');
 }
 

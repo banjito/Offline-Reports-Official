@@ -30,10 +30,10 @@ export class OfflineStorage {
     const userDataPath = app.getPath('userData');
     this.dbPath = join(userDataPath, 'field-tech.db');
     this.db = new Database(this.dbPath);
-    
+
     // Enable WAL mode for better concurrency
     this.db.pragma('journal_mode = WAL');
-    
+
     this.initialize();
   }
 
@@ -77,7 +77,7 @@ export class OfflineStorage {
       INSERT INTO sync_queue (id, table_name, record_id, operation, data)
       VALUES (?, ?, ?, ?, ?)
     `);
-    
+
     stmt.run(
       uuidv4(),
       tableName,
@@ -156,6 +156,7 @@ export class OfflineStorage {
         customer_address = excluded.customer_address,
         assigned_to = excluded.assigned_to,
         notes = excluded.notes,
+        is_dirty = excluded.is_dirty,
         updated_at = excluded.updated_at
     `);
 
@@ -195,7 +196,7 @@ export class OfflineStorage {
 
     const stmt = this.db.prepare(query);
     const reports = stmt.all(...params) as any[];
-    
+
     // Parse JSON fields
     return reports.map(report => ({
       ...report,
@@ -210,9 +211,9 @@ export class OfflineStorage {
   getReport(id: string): Report | undefined {
     const stmt = this.db.prepare('SELECT * FROM reports WHERE id = ?');
     const report = stmt.get(id) as any;
-    
+
     if (!report) return undefined;
-    
+
     return {
       ...report,
       report_data: JSON.parse(report.report_data),
@@ -289,6 +290,74 @@ export class OfflineStorage {
     this.addToSyncQueue('reports', id, 'update', updatedReport);
   }
 
+  /**
+   * Upsert a report (for syncing)
+   */
+  upsertReport(report: Report): void {
+    const stmt = this.db.prepare(`
+      INSERT INTO reports (
+        id, job_id, title, report_type, status, report_data,
+        submitted_by, submitted_at, current_version, revision_history,
+        is_dirty, last_sync_at, created_at, updated_at
+      ) VALUES (
+        @id, @job_id, @title, @report_type, @status, @report_data,
+        @submitted_by, @submitted_at, @current_version, @revision_history,
+        @is_dirty, @last_sync_at, @created_at, @updated_at
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        report_type = excluded.report_type,
+        status = excluded.status,
+        report_data = excluded.report_data,
+        submitted_by = excluded.submitted_by,
+        submitted_at = excluded.submitted_at,
+        current_version = excluded.current_version,
+        revision_history = excluded.revision_history,
+        is_dirty = excluded.is_dirty,
+        last_sync_at = excluded.last_sync_at,
+        updated_at = excluded.updated_at
+    `);
+
+    const reportToSave = {
+      ...report,
+      report_data: typeof report.report_data === 'string' ? report.report_data : JSON.stringify(report.report_data || {}),
+      revision_history: typeof report.revision_history === 'string' ? report.revision_history : JSON.stringify(report.revision_history || []),
+      is_dirty: report.is_dirty ? 1 : 0
+    };
+
+    stmt.run(reportToSave);
+  }
+
+  /**
+   * Upsert a report template
+   */
+  upsertTemplate(template: ReportTemplate): void {
+    const stmt = this.db.prepare(`
+      INSERT INTO report_templates (
+        id, name, report_type, template_schema, version, is_active,
+        last_sync_at, created_at, updated_at
+      ) VALUES (
+        @id, @name, @report_type, @template_schema, @version, @is_active,
+        @last_sync_at, @created_at, @updated_at
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        report_type = excluded.report_type,
+        template_schema = excluded.template_schema,
+        version = excluded.version,
+        is_active = excluded.is_active,
+        last_sync_at = excluded.last_sync_at,
+        updated_at = excluded.updated_at
+    `);
+
+    const templateToSave = {
+      ...template,
+      template_schema: typeof template.template_schema === 'string' ? template.template_schema : JSON.stringify(template.template_schema || {}),
+    };
+
+    stmt.run(templateToSave);
+  }
+
   // ============================================================================
   // EQUIPMENT OPERATIONS
   // ============================================================================
@@ -307,6 +376,47 @@ export class OfflineStorage {
   getEquipmentByAssignee(userId: string): Equipment[] {
     const stmt = this.db.prepare('SELECT * FROM equipment WHERE assigned_to = ?');
     return stmt.all(userId) as Equipment[];
+  }
+
+  /**
+   * Upsert equipment
+   */
+  upsertEquipment(equipment: Equipment): void {
+    const stmt = this.db.prepare(`
+      INSERT INTO equipment (
+        id, name, description, category, status, serial_number, model,
+        purchase_date, last_service_date, next_service_date, condition_rating,
+        notes, division, assigned_to, is_dirty, last_sync_at, created_at, updated_at
+      ) VALUES (
+        @id, @name, @description, @category, @status, @serial_number, @model,
+        @purchase_date, @last_service_date, @next_service_date, @condition_rating,
+        @notes, @division, @assigned_to, @is_dirty, @last_sync_at, @created_at, @updated_at
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        description = excluded.description,
+        category = excluded.category,
+        status = excluded.status,
+        serial_number = excluded.serial_number,
+        model = excluded.model,
+        purchase_date = excluded.purchase_date,
+        last_service_date = excluded.last_service_date,
+        next_service_date = excluded.next_service_date,
+        condition_rating = excluded.condition_rating,
+        notes = excluded.notes,
+        division = excluded.division,
+        assigned_to = excluded.assigned_to,
+        is_dirty = excluded.is_dirty,
+        last_sync_at = excluded.last_sync_at,
+        updated_at = excluded.updated_at
+    `);
+
+    const equipmentToSave = {
+      ...equipment,
+      is_dirty: equipment.is_dirty ? 1 : 0
+    };
+
+    stmt.run(equipmentToSave);
   }
 
   // ============================================================================
@@ -425,12 +535,38 @@ export class OfflineStorage {
   // ============================================================================
 
   /**
+   * Upsert a customer
+   */
+  upsertCustomer(customer: Customer): void {
+    const stmt = this.db.prepare(`
+      INSERT INTO customers (
+        id, name, company_name, email, phone, address, notes,
+        last_sync_at, created_at, updated_at
+      ) VALUES (
+        @id, @name, @company_name, @email, @phone, @address, @notes,
+        @last_sync_at, @created_at, @updated_at
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        company_name = excluded.company_name,
+        email = excluded.email,
+        phone = excluded.phone,
+        address = excluded.address,
+        notes = excluded.notes,
+        last_sync_at = excluded.last_sync_at,
+        updated_at = excluded.updated_at
+    `);
+
+    stmt.run(customer);
+  }
+
+  /**
    * Get app settings
    */
   getSettings(): AppSettings {
     const stmt = this.db.prepare('SELECT key, value FROM app_settings');
     const rows = stmt.all() as { key: string; value: string }[];
-    
+
     const settings: any = {};
     rows.forEach(row => {
       if (row.value === 'true' || row.value === 'false') {
@@ -441,7 +577,7 @@ export class OfflineStorage {
         settings[row.key] = row.value;
       }
     });
-    
+
     return settings as AppSettings;
   }
 
