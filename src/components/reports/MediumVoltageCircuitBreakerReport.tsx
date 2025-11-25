@@ -1,12 +1,19 @@
 /**
  * Medium Voltage Circuit Breaker Report - Desktop Version
+ * Matches the web app's MediumVoltageCircuitBreakerReport.tsx structure EXACTLY
+ * 
+ * Key Structure:
+ * - Visual Inspection: Items with IDs like 7.6.3.A.1, 7.6.3.A.2, etc.
+ * - Counter Reading: As Found / As Left
+ * - Contact/Pole Resistance: P1, P2, P3 columns
+ * - Insulation Resistance: 3 rows (Pole to Pole Closed, Pole to Frame Closed, Line to Load Open)
+ *   with Measured Values (P1, P2, P3) and Temperature Corrected (P1, P2, P3)
+ * - Vacuum Integrity/Dielectric Withstand: Breaker CLOSED and Breaker OPEN tables
+ * - Test Equipment: Insulation Resistance Tester, Micro-ohmmeter, Hi-Pot Tester
  */
 
 import React, { useState, useEffect } from 'react';
-import {
-  getTCF, fahrenheitToCelsius, multiplyByTCF,
-  VISUAL_INSPECTION_OPTIONS, TEST_VOLTAGE_OPTIONS, IR_UNITS, CONTACT_RESISTANCE_UNITS
-} from './BaseReport';
+import { getTCF, VISUAL_INSPECTION_OPTIONS } from './BaseReport';
 import './ReportStyles.css';
 
 interface MediumVoltageCircuitBreakerReportProps {
@@ -15,169 +22,396 @@ interface MediumVoltageCircuitBreakerReportProps {
   onSave: (data: any) => void;
 }
 
-const DEFAULT_VISUAL_INSPECTION_ITEMS = [
-  { id: '7.6.2.A.1', description: 'Compare equipment nameplate data with drawings and specifications.', result: '', comments: '' },
-  { id: '7.6.2.A.2', description: 'Inspect physical and mechanical condition.', result: '', comments: '' },
-  { id: '7.6.2.A.3', description: 'Inspect anchorage and alignment.', result: '', comments: '' },
-  { id: '7.6.2.A.4', description: 'Verify that all maintenance devices are available for servicing and operating the breaker.', result: '', comments: '' },
-  { id: '7.6.2.A.5', description: 'Verify the unit is clean.', result: '', comments: '' },
-  { id: '7.6.2.A.6', description: 'Verify the arc chutes are intact and secure.', result: '', comments: '' },
-  { id: '7.6.2.A.7', description: 'Inspect moving and stationary contacts for condition and alignment.', result: '', comments: '' },
-  { id: '7.6.2.A.8', description: 'Verify that primary and secondary contact wipe and other dimensions vital to satisfactory operation are correct.', result: '', comments: '' },
-  { id: '7.6.2.A.9', description: 'Perform all mechanical operator and contact alignment tests.', result: '', comments: '' },
-  { id: '7.6.2.A.10', description: 'Use of a low-resistance ohmmeter in accordance with Section 7.6.2.B.1.', result: '', comments: '' },
-  { id: '7.6.2.A.11', description: 'Verify cell fit and element alignment.', result: '', comments: '' },
-  { id: '7.6.2.A.12', description: 'Verify racking mechanism operation.', result: '', comments: '' },
-  { id: '7.6.2.A.13', description: 'Verify appropriate lubrication on moving current-carrying parts.', result: '', comments: '' },
-  { id: '7.6.2.A.14', description: 'Verify correct operation of all interlocks.', result: '', comments: '' },
-  { id: '7.6.2.A.15', description: 'Verify correct operation of charging mechanism.', result: '', comments: '' }
+// Visual inspection items matching the web app EXACTLY
+const VISUAL_INSPECTION_ITEMS = [
+  { id: '7.6.3.A.1', description: 'Compare equipment nameplate data with drawings and specifications.' },
+  { id: '7.6.3.A.2', description: 'Inspect physical and mechanical condition.' },
+  { id: '7.6.3.A.3', description: 'Inspect anchorage, alignment, and grounding.' },
+  { id: '7.6.3.A.4', description: 'Verify that all maintenance devices such as special tools and gauges specified by the manufacturer are available for servicing and operating the breaker.' },
+  { id: '7.6.3.A.5', description: 'Verify the unit is clean.' },
+  { id: '7.6.3.A.6', description: 'Perform all mechanical operation tests on the operating mechanism in accordance with manufacturer\'s published data.' },
+  { id: '7.6.3.A.7', description: 'Measure critical distances such as contact gap as recommended by manufacturer.' },
+  { id: '7.6.3.A.8.1', description: 'Use of low-resistance ohmmeter in accordance with Section 7.6.3.B.1.' },
+  { id: '7.6.3.A.9', description: 'Verify cell fit and element alignment.' },
+  { id: '7.6.3.A.10', description: 'Verify racking mechanism operation.' },
+  { id: '7.6.3.A.11', description: 'Verify appropriate lubrication on moving, current-carrying parts and on moving and sliding surfaces.' }
 ];
 
-const createDefaultFormData = () => ({
+const INSULATION_RESISTANCE_UNITS = ['kΩ', 'MΩ', 'GΩ'];
+const INSULATION_TEST_VOLTAGES = ['250V', '500V', '1000V', '2500V', '5000V'];
+const CONTACT_RESISTANCE_UNITS = ['μΩ', 'mΩ', 'Ω'];
+const DIELECTRIC_WITHSTAND_UNITS = ['μA', 'mA'];
+
+interface FormData {
+  // Job Information
+  customer: string;
+  address: string;
+  user: string;
+  date: string;
+  jobNumber: string;
+  technicians: string;
+  substation: string;
+  eqptLocation: string;
+  identifier: string;
+  status: 'PASS' | 'FAIL' | 'LIMITED SERVICE';
+  temperature: { fahrenheit: number; celsius: number; tcf: number; };
+  humidity: number;
+  
+  // Nameplate Data
+  manufacturer: string;
+  catalogNumber: string;
+  serialNumber: string;
+  type: string;
+  manufacturingDate: string;
+  icRating: string;
+  ratedVoltage: string;
+  operatingVoltage: string;
+  ampacity: string;
+  mvaRating: string;
+  
+  // Visual and Mechanical Inspection (object keyed by NETA id)
+  visualMechanicalInspection: { [key: string]: string };
+  counterReadingAsFound: string;
+  counterReadingAsLeft: string;
+  
+  // Contact/Pole Resistance
+  contactResistance: { p1: string; p2: string; p3: string; units: string; };
+  
+  // Insulation Resistance
+  insulationResistanceMeasured: {
+    testVoltage: string;
+    poleToPoleUnits: string;
+    poleToFrameUnits: string;
+    lineToLoadUnits: string;
+    poleToPoleClosedP1P2: string;
+    poleToPoleClosedP2P3: string;
+    poleToPoleClosedP3P1: string;
+    poleToFrameClosedP1: string;
+    poleToFrameClosedP2: string;
+    poleToFrameClosedP3: string;
+    lineToLoadOpenP1: string;
+    lineToLoadOpenP2: string;
+    lineToLoadOpenP3: string;
+  };
+  
+  // Dielectric Withstand
+  dielectricWithstandClosed: {
+    p1Ground: string;
+    p2Ground: string;
+    p3Ground: string;
+    units: string;
+    testVoltage: string;
+    testDuration: string;
+  };
+  vacuumIntegrityOpen: {
+    p1: string;
+    p2: string;
+    p3: string;
+    units: string;
+    testVoltage: string;
+    testDuration: string;
+  };
+  
+  // Test Equipment
+  testEquipment: {
+    insulationResistanceTester: { model: string; serial: string; id: string; };
+    microOhmmeter: { model: string; serial: string; id: string; };
+    hiPotTester: { model: string; serial: string; id: string; };
+  };
+  
+  comments: string;
+}
+
+const createDefaultFormData = (): FormData => ({
   customer: '',
   address: '',
+  user: '',
   date: new Date().toISOString().split('T')[0],
-  technicians: '',
   jobNumber: '',
+  technicians: '',
   substation: '',
   eqptLocation: '',
   identifier: '',
-  userName: '',
-  temperature: { fahrenheit: 68, celsius: 20, tcf: 1, humidity: 0 },
-  // Nameplate Data
+  status: 'PASS',
+  temperature: { fahrenheit: 68, celsius: 20, tcf: 1 },
+  humidity: 80,
   manufacturer: '',
   catalogNumber: '',
   serialNumber: '',
   type: '',
+  manufacturingDate: '',
+  icRating: '',
   ratedVoltage: '',
-  ratedCurrent: '',
-  interruptingRating: '',
-  closeAndLatch: '',
-  controlVoltage: '',
-  mechanism: '',
-  // Visual Inspection
-  visualInspectionItems: [...DEFAULT_VISUAL_INSPECTION_ITEMS],
-  // Contact Resistance
-  contactResistance: {
-    aPhase: '', bPhase: '', cPhase: '', unit: 'µΩ'
+  operatingVoltage: '',
+  ampacity: '',
+  mvaRating: '',
+  visualMechanicalInspection: VISUAL_INSPECTION_ITEMS.reduce((acc, item) => ({ ...acc, [item.id]: '' }), {}),
+  counterReadingAsFound: '',
+  counterReadingAsLeft: '',
+  contactResistance: { p1: '', p2: '', p3: '', units: 'μΩ' },
+  insulationResistanceMeasured: {
+    testVoltage: '1000V',
+    poleToPoleUnits: 'MΩ',
+    poleToFrameUnits: 'MΩ',
+    lineToLoadUnits: 'MΩ',
+    poleToPoleClosedP1P2: '',
+    poleToPoleClosedP2P3: '',
+    poleToPoleClosedP3P1: '',
+    poleToFrameClosedP1: '',
+    poleToFrameClosedP2: '',
+    poleToFrameClosedP3: '',
+    lineToLoadOpenP1: '',
+    lineToLoadOpenP2: '',
+    lineToLoadOpenP3: ''
   },
-  // Insulation Resistance
-  insulationResistance: {
-    testVoltage: '2500V', unit: 'MΩ',
-    measured: { ag: '', bg: '', cg: '', ab: '', bc: '', ca: '' },
-    corrected: { ag: '', bg: '', cg: '', ab: '', bc: '', ca: '' }
+  dielectricWithstandClosed: {
+    p1Ground: '',
+    p2Ground: '',
+    p3Ground: '',
+    units: 'μA',
+    testVoltage: '',
+    testDuration: '1 Min.'
   },
-  // Timing Tests
-  timingTests: {
-    close: { aPhase: '', bPhase: '', cPhase: '' },
-    open: { aPhase: '', bPhase: '', cPhase: '' }
+  vacuumIntegrityOpen: {
+    p1: '',
+    p2: '',
+    p3: '',
+    units: 'μA',
+    testVoltage: '',
+    testDuration: '1 Min.'
   },
-  // Test Equipment
   testEquipment: {
-    megohmmeter: { name: '', serialNumber: '', ampId: '' },
-    lowResistanceOhmmeter: { name: '', serialNumber: '', ampId: '' },
-    timingAnalyzer: { name: '', serialNumber: '', ampId: '' }
+    insulationResistanceTester: { model: '', serial: '', id: '' },
+    microOhmmeter: { model: '', serial: '', id: '' },
+    hiPotTester: { model: '', serial: '', id: '' }
   },
-  comments: '',
-  status: 'PASS'
+  comments: ''
 });
 
 const MediumVoltageCircuitBreakerReport: React.FC<MediumVoltageCircuitBreakerReportProps> = ({ job, reportData, onSave }) => {
-  const [formData, setFormData] = useState<any>(createDefaultFormData());
-  const [isEditing, setIsEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [isEditing] = useState(true);
+  const [formData, setFormData] = useState<FormData>(createDefaultFormData());
 
+  // Parse report data on load
   useEffect(() => {
-    if (reportData) {
-      const merged = { ...createDefaultFormData(), ...reportData };
-      if (!merged.visualInspectionItems?.length) merged.visualInspectionItems = [...DEFAULT_VISUAL_INSPECTION_ITEMS];
-      setFormData(merged);
+    const defaults = createDefaultFormData();
+    const merged = { ...defaults };
+    
+    // Get data from report_data or direct fields
+    const payload = reportData?.report_data || reportData || {};
+    const info = payload.report_info || payload;
+    
+    // Job Information
+    merged.customer = info.customer || job?.customer || '';
+    merged.address = info.address || job?.address || '';
+    merged.user = info.user || info.userName || '';
+    merged.date = info.date || defaults.date;
+    merged.jobNumber = info.jobNumber || job?.job_number || '';
+    merged.technicians = info.technicians || '';
+    merged.substation = info.substation || '';
+    merged.eqptLocation = info.eqptLocation || '';
+    merged.identifier = info.identifier || '';
+    merged.status = info.status || 'PASS';
+    
+    // Temperature
+    const temp = info.temperature || payload.temperature || {};
+    merged.temperature = {
+      fahrenheit: temp.fahrenheit ?? 68,
+      celsius: temp.celsius ?? 20,
+      tcf: temp.tcf ?? 1
+    };
+    merged.humidity = info.humidity ?? payload.humidity ?? 80;
+    
+    // Nameplate
+    merged.manufacturer = info.manufacturer || payload.manufacturer || '';
+    merged.catalogNumber = info.catalogNumber || payload.catalogNumber || '';
+    merged.serialNumber = info.serialNumber || payload.serialNumber || '';
+    merged.type = info.type || payload.type || '';
+    merged.manufacturingDate = info.manufacturingDate || payload.manufacturingDate || '';
+    merged.icRating = info.icRating || payload.icRating || '';
+    merged.ratedVoltage = info.ratedVoltage || payload.ratedVoltage || '';
+    merged.operatingVoltage = info.operatingVoltage || payload.operatingVoltage || '';
+    merged.ampacity = info.ampacity || payload.ampacity || '';
+    merged.mvaRating = info.mvaRating || payload.mvaRating || '';
+    
+    // Visual Mechanical Inspection - handle both object and array formats
+    const rawVmi = payload.visualMechanicalInspection || payload.visual_mechanical_inspection || 
+                   info.visualMechanicalInspection || {};
+    if (Array.isArray(rawVmi)) {
+      rawVmi.forEach((item: any) => {
+        const key = item.id || item.netaSection || '';
+        const val = item.result || item.value || '';
+        if (key) merged.visualMechanicalInspection[key] = val;
+      });
+    } else if (typeof rawVmi === 'object') {
+      Object.assign(merged.visualMechanicalInspection, rawVmi);
     }
-  }, [reportData]);
+    
+    // Counter Reading
+    merged.counterReadingAsFound = payload.counterReadingAsFound || info.counterReadingAsFound || '';
+    merged.counterReadingAsLeft = payload.counterReadingAsLeft || info.counterReadingAsLeft || '';
+    
+    // Contact Resistance
+    const cr = payload.contactResistance || info.contactResistance || {};
+    merged.contactResistance = {
+      p1: cr.p1 || '',
+      p2: cr.p2 || '',
+      p3: cr.p3 || '',
+      units: cr.units || 'μΩ'
+    };
+    
+    // Insulation Resistance
+    const ir = payload.insulationResistanceMeasured || info.insulationResistanceMeasured || {};
+    merged.insulationResistanceMeasured = {
+      testVoltage: ir.testVoltage || '1000V',
+      poleToPoleUnits: ir.poleToPoleUnits || 'MΩ',
+      poleToFrameUnits: ir.poleToFrameUnits || 'MΩ',
+      lineToLoadUnits: ir.lineToLoadUnits || 'MΩ',
+      poleToPoleClosedP1P2: ir.poleToPoleClosedP1P2 || '',
+      poleToPoleClosedP2P3: ir.poleToPoleClosedP2P3 || '',
+      poleToPoleClosedP3P1: ir.poleToPoleClosedP3P1 || '',
+      poleToFrameClosedP1: ir.poleToFrameClosedP1 || '',
+      poleToFrameClosedP2: ir.poleToFrameClosedP2 || '',
+      poleToFrameClosedP3: ir.poleToFrameClosedP3 || '',
+      lineToLoadOpenP1: ir.lineToLoadOpenP1 || '',
+      lineToLoadOpenP2: ir.lineToLoadOpenP2 || '',
+      lineToLoadOpenP3: ir.lineToLoadOpenP3 || ''
+    };
+    
+    // Dielectric Withstand
+    const dw = payload.dielectricWithstandClosed || info.dielectricWithstandClosed || {};
+    merged.dielectricWithstandClosed = {
+      p1Ground: dw.p1Ground || '',
+      p2Ground: dw.p2Ground || '',
+      p3Ground: dw.p3Ground || '',
+      units: dw.units || 'μA',
+      testVoltage: dw.testVoltage || '',
+      testDuration: dw.testDuration || '1 Min.'
+    };
+    
+    const vi = payload.vacuumIntegrityOpen || info.vacuumIntegrityOpen || {};
+    merged.vacuumIntegrityOpen = {
+      p1: vi.p1 || '',
+      p2: vi.p2 || '',
+      p3: vi.p3 || '',
+      units: vi.units || 'μA',
+      testVoltage: vi.testVoltage || '',
+      testDuration: vi.testDuration || '1 Min.'
+    };
+    
+    // Test Equipment
+    const te = payload.testEquipment || info.testEquipment || {};
+    merged.testEquipment = {
+      insulationResistanceTester: {
+        model: te.insulationResistanceTester?.model || '',
+        serial: te.insulationResistanceTester?.serial || '',
+        id: te.insulationResistanceTester?.id || ''
+      },
+      microOhmmeter: {
+        model: te.microOhmmeter?.model || '',
+        serial: te.microOhmmeter?.serial || '',
+        id: te.microOhmmeter?.id || ''
+      },
+      hiPotTester: {
+        model: te.hiPotTester?.model || '',
+        serial: te.hiPotTester?.serial || '',
+        id: te.hiPotTester?.id || ''
+      }
+    };
+    
+    merged.comments = payload.comments || info.comments || '';
+    
+    setFormData(merged);
+  }, [reportData, job]);
 
+  // Calculate TCF when temperature changes
   useEffect(() => {
-    if (job) {
-      setFormData((prev: any) => ({
+    const tcf = getTCF(formData.temperature.celsius);
+    if (tcf !== formData.temperature.tcf) {
+      setFormData(prev => ({
         ...prev,
-        jobNumber: job.job_number || prev.jobNumber,
-        customer: job.customer_name || prev.customer,
-        address: job.site_address || prev.address
+        temperature: { ...prev.temperature, tcf }
       }));
     }
-  }, [job]);
+  }, [formData.temperature.celsius]);
 
-  useEffect(() => {
-    const fahrenheit = formData.temperature?.fahrenheit || 68;
-    const celsius = fahrenheitToCelsius(fahrenheit);
-    const tcf = getTCF(celsius);
-    if (celsius !== formData.temperature?.celsius || tcf !== formData.temperature?.tcf) {
-      setFormData((prev: any) => ({ ...prev, temperature: { ...prev.temperature, celsius, tcf } }));
-    }
-  }, [formData.temperature?.fahrenheit]);
+  // Calculate temperature corrected value
+  const calculateCorrectedValue = (value: string): string => {
+    if (!value || value === '') return '';
+    const trimmed = value.trim();
+    if (trimmed.toUpperCase() === 'N/A' || trimmed.includes('>') || trimmed.includes('<')) return value;
+    const numeric = parseFloat(trimmed);
+    if (isNaN(numeric)) return value;
+    return (numeric * formData.temperature.tcf).toFixed(2);
+  };
 
-  useEffect(() => {
-    const tcf = formData.temperature?.tcf || 1;
-    const measured = formData.insulationResistance?.measured || {};
-    const corrected = {
-      ag: multiplyByTCF(measured.ag || '', tcf),
-      bg: multiplyByTCF(measured.bg || '', tcf),
-      cg: multiplyByTCF(measured.cg || '', tcf),
-      ab: multiplyByTCF(measured.ab || '', tcf),
-      bc: multiplyByTCF(measured.bc || '', tcf),
-      ca: multiplyByTCF(measured.ca || '', tcf)
-    };
-    setFormData((prev: any) => ({
-      ...prev,
-      insulationResistance: { ...prev.insulationResistance, corrected }
-    }));
-  }, [formData.insulationResistance?.measured, formData.temperature?.tcf]);
-
+  // Set field helper
   const setField = (path: string, value: any) => {
-    setFormData((prev: any) => {
-      const clone = JSON.parse(JSON.stringify(prev));
-      const keys = path.split('.');
-      let cur = clone;
-      for (let i = 0; i < keys.length - 1; i++) {
-        if (cur[keys[i]] === undefined) cur[keys[i]] = {};
-        cur = cur[keys[i]];
+    setFormData(prev => {
+      const newData = { ...prev };
+      const parts = path.split('.');
+      let current: any = newData;
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (current[parts[i]] === undefined) current[parts[i]] = {};
+        current = current[parts[i]];
       }
-      cur[keys[keys.length - 1]] = value;
-      return clone;
+      current[parts[parts.length - 1]] = value;
+      return newData;
     });
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await onSave(formData);
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Save failed:', error);
-      alert('Failed to save report');
-    } finally {
-      setSaving(false);
-    }
+  // Handle temperature changes
+  const handleFahrenheitChange = (fahrenheit: number) => {
+    const celsius = Math.round((fahrenheit - 32) * 5 / 9);
+    const tcf = getTCF(celsius);
+    setFormData(prev => ({
+      ...prev,
+      temperature: { fahrenheit, celsius, tcf }
+    }));
   };
 
-  const updateVisualInspection = (index: number, field: string, value: string) => {
-    const items = [...formData.visualInspectionItems];
-    items[index] = { ...items[index], [field]: value };
-    setFormData((prev: any) => ({ ...prev, visualInspectionItems: items }));
+  const handleCelsiusChange = (celsius: number) => {
+    const fahrenheit = Math.round((celsius * 9 / 5) + 32);
+    const tcf = getTCF(celsius);
+    setFormData(prev => ({
+      ...prev,
+      temperature: { fahrenheit, celsius, tcf }
+    }));
+  };
+
+  // Handle save
+  const handleSave = () => {
+    // Convert visual inspection to array format for compatibility
+    const vmiArray = Object.entries(formData.visualMechanicalInspection).map(([id, result]) => ({ id, result }));
+    
+    const saveData = {
+      report_data: {
+        ...formData,
+        visual_mechanical_inspection: vmiArray
+      }
+    };
+    onSave(saveData);
   };
 
   return (
     <div className="report-container">
-      <div className="report-header-bar">
-        <h1 className="report-title">Medium Voltage Circuit Breaker Test Report ATS</h1>
-        <div className="report-actions">
-          <button onClick={() => setField('status', formData.status === 'PASS' ? 'FAIL' : 'PASS')} disabled={!isEditing} className={`status-btn ${formData.status === 'PASS' ? 'pass' : 'fail'}`}>
+      {/* Header */}
+      <div className="report-header">
+        <h1 className="report-title">Medium Voltage Circuit Breaker Inspection & Test Report</h1>
+        <div className="report-header-buttons">
+          <button
+            className={`status-button ${formData.status === 'PASS' ? 'pass' : formData.status === 'FAIL' ? 'fail' : 'limited'}`}
+            onClick={() => {
+              const statuses: Array<'PASS' | 'FAIL' | 'LIMITED SERVICE'> = ['PASS', 'FAIL', 'LIMITED SERVICE'];
+              const idx = statuses.indexOf(formData.status);
+              setField('status', statuses[(idx + 1) % statuses.length]);
+            }}
+          >
             {formData.status}
           </button>
-          {!isEditing ? (
-            <button onClick={() => setIsEditing(true)} className="btn-primary">Edit Report</button>
-          ) : (
-            <button onClick={handleSave} disabled={saving} className="btn-save">{saving ? 'Saving...' : 'Save Report'}</button>
-          )}
+          <button className="save-button" onClick={handleSave}>
+            Save Report
+          </button>
         </div>
       </div>
 
@@ -185,23 +419,61 @@ const MediumVoltageCircuitBreakerReport: React.FC<MediumVoltageCircuitBreakerRep
       <section className="report-section">
         <div className="section-divider"></div>
         <h2 className="section-title">Job Information</h2>
-        <div className="form-grid-6">
-          <div className="form-field"><label>Customer:</label><input value={formData.customer || ''} onChange={e => setField('customer', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-          <div className="form-field"><label>Address:</label><input value={formData.address || ''} onChange={e => setField('address', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-          <div className="form-field"><label>Job #:</label><input value={formData.jobNumber || ''} onChange={e => setField('jobNumber', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-          <div className="form-field"><label>Technicians:</label><input value={formData.technicians || ''} onChange={e => setField('technicians', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-          <div className="form-field"><label>Date:</label><input type="date" value={formData.date || ''} onChange={e => setField('date', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-          <div className="form-field"><label>Identifier:</label><input value={formData.identifier || ''} onChange={e => setField('identifier', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-          <div className="form-field temp-field">
-            <label>Temp:</label>
-            <div className="temp-inputs">
-              <input type="number" value={formData.temperature?.fahrenheit ?? 68} onChange={e => setField('temperature.fahrenheit', Number(e.target.value))} readOnly={!isEditing} className="report-input temp-input" />
-              <span>°F</span><span className="temp-celsius">{formData.temperature?.celsius ?? 20}</span><span>°C</span>
-              <span className="temp-label">TCF</span><span className="temp-value">{(formData.temperature?.tcf ?? 1).toFixed(3)}</span>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="form-field">
+            <label>Job #:</label>
+            <input value={formData.jobNumber || ''} readOnly className="report-input bg-gray-100" />
           </div>
-          <div className="form-field"><label>Substation:</label><input value={formData.substation || ''} onChange={e => setField('substation', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-          <div className="form-field"><label>Eqpt. Location:</label><input value={formData.eqptLocation || ''} onChange={e => setField('eqptLocation', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
+          <div className="form-field">
+            <label>Customer:</label>
+            <input value={formData.customer || ''} readOnly className="report-input bg-gray-100" />
+          </div>
+          <div className="form-field">
+            <label>Address:</label>
+            <input value={formData.address || ''} readOnly className="report-input bg-gray-100" />
+          </div>
+          <div className="form-field">
+            <label>Technicians:</label>
+            <input value={formData.technicians || ''} onChange={e => setField('technicians', e.target.value)} className="report-input" />
+          </div>
+          <div className="form-field">
+            <label>User:</label>
+            <input value={formData.user || ''} onChange={e => setField('user', e.target.value)} className="report-input" />
+          </div>
+          <div className="form-field">
+            <label>Substation:</label>
+            <input value={formData.substation || ''} onChange={e => setField('substation', e.target.value)} className="report-input" />
+          </div>
+          <div className="form-field">
+            <label>Date:</label>
+            <input type="date" value={formData.date || ''} onChange={e => setField('date', e.target.value)} className="report-input" />
+          </div>
+          <div className="form-field">
+            <label>Eqpt. Location:</label>
+            <input value={formData.eqptLocation || ''} onChange={e => setField('eqptLocation', e.target.value)} className="report-input" />
+          </div>
+          <div className="form-field">
+            <label>Identifier:</label>
+            <input value={formData.identifier || ''} onChange={e => setField('identifier', e.target.value)} className="report-input" />
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-4 mt-4">
+          <div className="form-field">
+            <label>Temp. °F:</label>
+            <input type="number" value={formData.temperature.fahrenheit} onChange={e => handleFahrenheitChange(Number(e.target.value))} className="report-input" style={{width: '80px'}} />
+          </div>
+          <div className="form-field">
+            <label>°C:</label>
+            <input type="number" value={formData.temperature.celsius} onChange={e => handleCelsiusChange(Number(e.target.value))} className="report-input" style={{width: '80px'}} />
+          </div>
+          <div className="form-field">
+            <label>TCF:</label>
+            <input value={formData.temperature.tcf} readOnly className="report-input bg-gray-100" style={{width: '80px'}} />
+          </div>
+          <div className="form-field">
+            <label>Humidity %:</label>
+            <input type="number" value={formData.humidity} onChange={e => setField('humidity', Number(e.target.value))} className="report-input" style={{width: '80px'}} />
+          </div>
         </div>
       </section>
 
@@ -209,22 +481,46 @@ const MediumVoltageCircuitBreakerReport: React.FC<MediumVoltageCircuitBreakerRep
       <section className="report-section">
         <div className="section-divider"></div>
         <h2 className="section-title">Nameplate Data</h2>
-        <div className="enclosure-grid">
-          <div className="enclosure-row">
-            <div className="enclosure-cell"><strong>Manufacturer:</strong><input value={formData.manufacturer || ''} onChange={e => setField('manufacturer', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-            <div className="enclosure-cell"><strong>Catalog #:</strong><input value={formData.catalogNumber || ''} onChange={e => setField('catalogNumber', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-            <div className="enclosure-cell"><strong>Serial #:</strong><input value={formData.serialNumber || ''} onChange={e => setField('serialNumber', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-            <div className="enclosure-cell"><strong>Type:</strong><input value={formData.type || ''} onChange={e => setField('type', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="form-field">
+            <label>Manufacturer:</label>
+            <input value={formData.manufacturer || ''} onChange={e => setField('manufacturer', e.target.value)} className="report-input" />
           </div>
-          <div className="enclosure-row">
-            <div className="enclosure-cell"><strong>Rated Voltage (kV):</strong><input value={formData.ratedVoltage || ''} onChange={e => setField('ratedVoltage', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-            <div className="enclosure-cell"><strong>Rated Current (A):</strong><input value={formData.ratedCurrent || ''} onChange={e => setField('ratedCurrent', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-            <div className="enclosure-cell"><strong>Interrupting Rating (kA):</strong><input value={formData.interruptingRating || ''} onChange={e => setField('interruptingRating', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-            <div className="enclosure-cell"><strong>Close & Latch (kA):</strong><input value={formData.closeAndLatch || ''} onChange={e => setField('closeAndLatch', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
+          <div className="form-field">
+            <label>I.C. Rating (kA):</label>
+            <input value={formData.icRating || ''} onChange={e => setField('icRating', e.target.value)} className="report-input" />
           </div>
-          <div className="enclosure-row">
-            <div className="enclosure-cell"><strong>Control Voltage:</strong><input value={formData.controlVoltage || ''} onChange={e => setField('controlVoltage', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
-            <div className="enclosure-cell"><strong>Mechanism:</strong><input value={formData.mechanism || ''} onChange={e => setField('mechanism', e.target.value)} readOnly={!isEditing} className="report-input" /></div>
+          <div className="form-field">
+            <label>Catalog Number:</label>
+            <input value={formData.catalogNumber || ''} onChange={e => setField('catalogNumber', e.target.value)} className="report-input" />
+          </div>
+          <div className="form-field">
+            <label>Rated Voltage (kV):</label>
+            <input value={formData.ratedVoltage || ''} onChange={e => setField('ratedVoltage', e.target.value)} className="report-input" />
+          </div>
+          <div className="form-field">
+            <label>Serial Number:</label>
+            <input value={formData.serialNumber || ''} onChange={e => setField('serialNumber', e.target.value)} className="report-input" />
+          </div>
+          <div className="form-field">
+            <label>Operating Voltage (kV):</label>
+            <input value={formData.operatingVoltage || ''} onChange={e => setField('operatingVoltage', e.target.value)} className="report-input" />
+          </div>
+          <div className="form-field">
+            <label>Type:</label>
+            <input value={formData.type || ''} onChange={e => setField('type', e.target.value)} className="report-input" />
+          </div>
+          <div className="form-field">
+            <label>Ampacity (A):</label>
+            <input value={formData.ampacity || ''} onChange={e => setField('ampacity', e.target.value)} className="report-input" />
+          </div>
+          <div className="form-field">
+            <label>Manufacturing Date:</label>
+            <input value={formData.manufacturingDate || ''} onChange={e => setField('manufacturingDate', e.target.value)} className="report-input" />
+          </div>
+          <div className="form-field">
+            <label>MVA Rating:</label>
+            <input value={formData.mvaRating || ''} onChange={e => setField('mvaRating', e.target.value)} className="report-input" />
           </div>
         </div>
       </section>
@@ -233,47 +529,118 @@ const MediumVoltageCircuitBreakerReport: React.FC<MediumVoltageCircuitBreakerRep
       <section className="report-section">
         <div className="section-divider"></div>
         <h2 className="section-title">Visual and Mechanical Inspection</h2>
-        <p className="section-subtitle">Per NETA ATS Section 7.6.2</p>
         <div className="table-container">
           <table className="report-table">
             <thead>
-              <tr><th style={{ width: '10%' }}>#</th><th style={{ width: '55%' }}>Description</th><th style={{ width: '15%' }}>Result</th><th style={{ width: '20%' }}>Comments</th></tr>
+              <tr>
+                <th style={{ width: '12%' }}>NETA Section</th>
+                <th style={{ width: '70%' }}>Description</th>
+                <th style={{ width: '18%' }}>Results</th>
+              </tr>
             </thead>
             <tbody>
-              {formData.visualInspectionItems.map((item: any, idx: number) => (
-                <tr key={item.id || idx}>
-                  <td>{item.id}</td>
+              {VISUAL_INSPECTION_ITEMS.map(item => (
+                <tr key={item.id}>
+                  <td className="text-center">{item.id}</td>
                   <td className="text-left">{item.description}</td>
                   <td>
-                    <select value={item.result} onChange={e => updateVisualInspection(idx, 'result', e.target.value)} disabled={!isEditing} className="report-input">
-                      {VISUAL_INSPECTION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    <select
+                      value={formData.visualMechanicalInspection[item.id] || ''}
+                      onChange={e => setField(`visualMechanicalInspection.${item.id}`, e.target.value)}
+                      className="report-input"
+                    >
+                      <option value="">Select One</option>
+                      {VISUAL_INSPECTION_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
                     </select>
                   </td>
-                  <td><input value={item.comments || ''} onChange={e => updateVisualInspection(idx, 'comments', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </section>
-
-      {/* Contact Resistance */}
-      <section className="report-section">
-        <div className="section-divider"></div>
-        <h2 className="section-title">Electrical Tests - Contact Resistance</h2>
-        <div className="table-container">
-          <table className="report-table">
+        
+        {/* Counter Reading */}
+        <div className="mt-4">
+          <table className="report-table" style={{ width: 'auto' }}>
             <thead>
-              <tr><th>A Phase</th><th>B Phase</th><th>C Phase</th><th>Unit</th></tr>
+              <tr>
+                <th colSpan={2}>Counter Reading</th>
+              </tr>
             </thead>
             <tbody>
               <tr>
-                <td><input value={formData.contactResistance?.aPhase || ''} onChange={e => setField('contactResistance.aPhase', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-                <td><input value={formData.contactResistance?.bPhase || ''} onChange={e => setField('contactResistance.bPhase', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-                <td><input value={formData.contactResistance?.cPhase || ''} onChange={e => setField('contactResistance.cPhase', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
+                <td style={{ width: '100px' }}>As Found</td>
                 <td>
-                  <select value={formData.contactResistance?.unit || 'µΩ'} onChange={e => setField('contactResistance.unit', e.target.value)} disabled={!isEditing} className="report-input">
-                    {CONTACT_RESISTANCE_UNITS.map(u => <option key={u.symbol} value={u.symbol}>{u.symbol}</option>)}
+                  <input
+                    value={formData.counterReadingAsFound || ''}
+                    onChange={e => setField('counterReadingAsFound', e.target.value)}
+                    className="report-input"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td>As Left</td>
+                <td>
+                  <input
+                    value={formData.counterReadingAsLeft || ''}
+                    onChange={e => setField('counterReadingAsLeft', e.target.value)}
+                    className="report-input"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Contact/Pole Resistance */}
+      <section className="report-section">
+        <div className="section-divider"></div>
+        <h2 className="section-title">Electrical Tests - Contact/Pole Resistance</h2>
+        <div className="table-container">
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th>P1</th>
+                <th>P2</th>
+                <th>P3</th>
+                <th>Units</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <input
+                    value={formData.contactResistance.p1 || ''}
+                    onChange={e => setField('contactResistance.p1', e.target.value)}
+                    className="report-input text-center"
+                  />
+                </td>
+                <td>
+                  <input
+                    value={formData.contactResistance.p2 || ''}
+                    onChange={e => setField('contactResistance.p2', e.target.value)}
+                    className="report-input text-center"
+                  />
+                </td>
+                <td>
+                  <input
+                    value={formData.contactResistance.p3 || ''}
+                    onChange={e => setField('contactResistance.p3', e.target.value)}
+                    className="report-input text-center"
+                  />
+                </td>
+                <td>
+                  <select
+                    value={formData.contactResistance.units || 'μΩ'}
+                    onChange={e => setField('contactResistance.units', e.target.value)}
+                    className="report-input"
+                  >
+                    {CONTACT_RESISTANCE_UNITS.map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
                   </select>
                 </td>
               </tr>
@@ -286,69 +653,177 @@ const MediumVoltageCircuitBreakerReport: React.FC<MediumVoltageCircuitBreakerRep
       <section className="report-section">
         <div className="section-divider"></div>
         <h2 className="section-title">Electrical Tests - Insulation Resistance</h2>
-        <div className="ir-header-row">
-          <span>Test Voltage:</span>
-          <select value={formData.insulationResistance?.testVoltage || '2500V'} onChange={e => setField('insulationResistance.testVoltage', e.target.value)} disabled={!isEditing} className="report-input">
-            {TEST_VOLTAGE_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
-          </select>
-          <span>Unit:</span>
-          <select value={formData.insulationResistance?.unit || 'MΩ'} onChange={e => setField('insulationResistance.unit', e.target.value)} disabled={!isEditing} className="report-input">
-            {IR_UNITS.map(u => <option key={u.symbol} value={u.symbol}>{u.symbol}</option>)}
+        <div className="flex items-center gap-4 mb-4">
+          <label className="text-sm font-medium">Test Voltage:</label>
+          <select
+            value={formData.insulationResistanceMeasured.testVoltage || '1000V'}
+            onChange={e => setField('insulationResistanceMeasured.testVoltage', e.target.value)}
+            className="report-input"
+            style={{ width: 'auto' }}
+          >
+            {INSULATION_TEST_VOLTAGES.map(v => (
+              <option key={v} value={v}>{v}</option>
+            ))}
           </select>
         </div>
         <div className="table-container">
           <table className="report-table">
             <thead>
-              <tr><th></th><th>A-G</th><th>B-G</th><th>C-G</th><th>A-B</th><th>B-C</th><th>C-A</th></tr>
-            </thead>
-            <tbody>
               <tr>
-                <td>Measured</td>
-                <td><input value={formData.insulationResistance?.measured?.ag || ''} onChange={e => setField('insulationResistance.measured.ag', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-                <td><input value={formData.insulationResistance?.measured?.bg || ''} onChange={e => setField('insulationResistance.measured.bg', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-                <td><input value={formData.insulationResistance?.measured?.cg || ''} onChange={e => setField('insulationResistance.measured.cg', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-                <td><input value={formData.insulationResistance?.measured?.ab || ''} onChange={e => setField('insulationResistance.measured.ab', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-                <td><input value={formData.insulationResistance?.measured?.bc || ''} onChange={e => setField('insulationResistance.measured.bc', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-                <td><input value={formData.insulationResistance?.measured?.ca || ''} onChange={e => setField('insulationResistance.measured.ca', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
+                <th rowSpan={2}></th>
+                <th colSpan={3} className="text-center">Measured Values</th>
+                <th colSpan={3} className="text-center">Temperature Corrected</th>
+                <th rowSpan={2}>Units</th>
               </tr>
               <tr>
-                <td>Corrected</td>
-                <td><input value={formData.insulationResistance?.corrected?.ag || ''} readOnly className="report-input calculated" /></td>
-                <td><input value={formData.insulationResistance?.corrected?.bg || ''} readOnly className="report-input calculated" /></td>
-                <td><input value={formData.insulationResistance?.corrected?.cg || ''} readOnly className="report-input calculated" /></td>
-                <td><input value={formData.insulationResistance?.corrected?.ab || ''} readOnly className="report-input calculated" /></td>
-                <td><input value={formData.insulationResistance?.corrected?.bc || ''} readOnly className="report-input calculated" /></td>
-                <td><input value={formData.insulationResistance?.corrected?.ca || ''} readOnly className="report-input calculated" /></td>
+                <th>P1 (P1-P2)</th>
+                <th>P2 (P2-P3)</th>
+                <th>P3 (P3-P1)</th>
+                <th>P1 (P1-P2)</th>
+                <th>P2 (P2-P3)</th>
+                <th>P3 (P3-P1)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Pole to Pole (Closed) */}
+              <tr>
+                <td className="font-medium">Pole to Pole (Closed)</td>
+                <td><input value={formData.insulationResistanceMeasured.poleToPoleClosedP1P2 || ''} onChange={e => setField('insulationResistanceMeasured.poleToPoleClosedP1P2', e.target.value)} className="report-input text-center" /></td>
+                <td><input value={formData.insulationResistanceMeasured.poleToPoleClosedP2P3 || ''} onChange={e => setField('insulationResistanceMeasured.poleToPoleClosedP2P3', e.target.value)} className="report-input text-center" /></td>
+                <td><input value={formData.insulationResistanceMeasured.poleToPoleClosedP3P1 || ''} onChange={e => setField('insulationResistanceMeasured.poleToPoleClosedP3P1', e.target.value)} className="report-input text-center" /></td>
+                <td><input value={calculateCorrectedValue(formData.insulationResistanceMeasured.poleToPoleClosedP1P2)} readOnly className="report-input text-center bg-yellow-50" /></td>
+                <td><input value={calculateCorrectedValue(formData.insulationResistanceMeasured.poleToPoleClosedP2P3)} readOnly className="report-input text-center bg-yellow-50" /></td>
+                <td><input value={calculateCorrectedValue(formData.insulationResistanceMeasured.poleToPoleClosedP3P1)} readOnly className="report-input text-center bg-yellow-50" /></td>
+                <td>
+                  <select value={formData.insulationResistanceMeasured.poleToPoleUnits || 'MΩ'} onChange={e => setField('insulationResistanceMeasured.poleToPoleUnits', e.target.value)} className="report-input">
+                    {INSULATION_RESISTANCE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </td>
+              </tr>
+              {/* Pole to Frame (Closed) */}
+              <tr>
+                <td className="font-medium">Pole to Frame (Closed)</td>
+                <td><input value={formData.insulationResistanceMeasured.poleToFrameClosedP1 || ''} onChange={e => setField('insulationResistanceMeasured.poleToFrameClosedP1', e.target.value)} className="report-input text-center" /></td>
+                <td><input value={formData.insulationResistanceMeasured.poleToFrameClosedP2 || ''} onChange={e => setField('insulationResistanceMeasured.poleToFrameClosedP2', e.target.value)} className="report-input text-center" /></td>
+                <td><input value={formData.insulationResistanceMeasured.poleToFrameClosedP3 || ''} onChange={e => setField('insulationResistanceMeasured.poleToFrameClosedP3', e.target.value)} className="report-input text-center" /></td>
+                <td><input value={calculateCorrectedValue(formData.insulationResistanceMeasured.poleToFrameClosedP1)} readOnly className="report-input text-center bg-yellow-50" /></td>
+                <td><input value={calculateCorrectedValue(formData.insulationResistanceMeasured.poleToFrameClosedP2)} readOnly className="report-input text-center bg-yellow-50" /></td>
+                <td><input value={calculateCorrectedValue(formData.insulationResistanceMeasured.poleToFrameClosedP3)} readOnly className="report-input text-center bg-yellow-50" /></td>
+                <td>
+                  <select value={formData.insulationResistanceMeasured.poleToFrameUnits || 'MΩ'} onChange={e => setField('insulationResistanceMeasured.poleToFrameUnits', e.target.value)} className="report-input">
+                    {INSULATION_RESISTANCE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </td>
+              </tr>
+              {/* Line to Load (Open) */}
+              <tr>
+                <td className="font-medium">Line to Load (Open)</td>
+                <td><input value={formData.insulationResistanceMeasured.lineToLoadOpenP1 || ''} onChange={e => setField('insulationResistanceMeasured.lineToLoadOpenP1', e.target.value)} className="report-input text-center" /></td>
+                <td><input value={formData.insulationResistanceMeasured.lineToLoadOpenP2 || ''} onChange={e => setField('insulationResistanceMeasured.lineToLoadOpenP2', e.target.value)} className="report-input text-center" /></td>
+                <td><input value={formData.insulationResistanceMeasured.lineToLoadOpenP3 || ''} onChange={e => setField('insulationResistanceMeasured.lineToLoadOpenP3', e.target.value)} className="report-input text-center" /></td>
+                <td><input value={calculateCorrectedValue(formData.insulationResistanceMeasured.lineToLoadOpenP1)} readOnly className="report-input text-center bg-yellow-50" /></td>
+                <td><input value={calculateCorrectedValue(formData.insulationResistanceMeasured.lineToLoadOpenP2)} readOnly className="report-input text-center bg-yellow-50" /></td>
+                <td><input value={calculateCorrectedValue(formData.insulationResistanceMeasured.lineToLoadOpenP3)} readOnly className="report-input text-center bg-yellow-50" /></td>
+                <td>
+                  <select value={formData.insulationResistanceMeasured.lineToLoadUnits || 'MΩ'} onChange={e => setField('insulationResistanceMeasured.lineToLoadUnits', e.target.value)} className="report-input">
+                    {INSULATION_RESISTANCE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      {/* Timing Tests */}
+      {/* Vacuum Integrity/Dielectric Withstand */}
       <section className="report-section">
         <div className="section-divider"></div>
-        <h2 className="section-title">Electrical Tests - Timing (ms)</h2>
-        <div className="table-container">
-          <table className="report-table">
-            <thead>
-              <tr><th></th><th>A Phase</th><th>B Phase</th><th>C Phase</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Close</td>
-                <td><input value={formData.timingTests?.close?.aPhase || ''} onChange={e => setField('timingTests.close.aPhase', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-                <td><input value={formData.timingTests?.close?.bPhase || ''} onChange={e => setField('timingTests.close.bPhase', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-                <td><input value={formData.timingTests?.close?.cPhase || ''} onChange={e => setField('timingTests.close.cPhase', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-              </tr>
-              <tr>
-                <td>Open</td>
-                <td><input value={formData.timingTests?.open?.aPhase || ''} onChange={e => setField('timingTests.open.aPhase', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-                <td><input value={formData.timingTests?.open?.bPhase || ''} onChange={e => setField('timingTests.open.bPhase', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-                <td><input value={formData.timingTests?.open?.cPhase || ''} onChange={e => setField('timingTests.open.cPhase', e.target.value)} readOnly={!isEditing} className="report-input" /></td>
-              </tr>
-            </tbody>
-          </table>
+        <h2 className="section-title">Vacuum Integrity/Dielectric Withstand</h2>
+        
+        {/* Dielectric Withstand - Breaker CLOSED */}
+        <div className="mb-6">
+          <div className="table-container">
+            <table className="report-table">
+              <thead>
+                <tr>
+                  <th colSpan={5} className="text-center">Dielectric Withstand - Breaker CLOSED</th>
+                </tr>
+                <tr>
+                  <th></th>
+                  <th>P1-Ground</th>
+                  <th>P2-Ground</th>
+                  <th>P3-Ground</th>
+                  <th>Units</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Result:</td>
+                  <td><input value={formData.dielectricWithstandClosed.p1Ground || ''} onChange={e => setField('dielectricWithstandClosed.p1Ground', e.target.value)} className="report-input text-center" /></td>
+                  <td><input value={formData.dielectricWithstandClosed.p2Ground || ''} onChange={e => setField('dielectricWithstandClosed.p2Ground', e.target.value)} className="report-input text-center" /></td>
+                  <td><input value={formData.dielectricWithstandClosed.p3Ground || ''} onChange={e => setField('dielectricWithstandClosed.p3Ground', e.target.value)} className="report-input text-center" /></td>
+                  <td>
+                    <select value={formData.dielectricWithstandClosed.units || 'μA'} onChange={e => setField('dielectricWithstandClosed.units', e.target.value)} className="report-input">
+                      {DIELECTRIC_WITHSTAND_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end gap-4 mt-2">
+            <div className="form-field">
+              <label>Test Voltage:</label>
+              <input value={formData.dielectricWithstandClosed.testVoltage || ''} onChange={e => setField('dielectricWithstandClosed.testVoltage', e.target.value)} className="report-input" style={{width: '100px'}} />
+            </div>
+            <div className="form-field">
+              <label>Test Duration:</label>
+              <input value={formData.dielectricWithstandClosed.testDuration || '1 Min.'} onChange={e => setField('dielectricWithstandClosed.testDuration', e.target.value)} className="report-input" style={{width: '100px'}} />
+            </div>
+          </div>
+        </div>
+
+        {/* Vacuum Integrity - Breaker OPEN */}
+        <div>
+          <div className="table-container">
+            <table className="report-table">
+              <thead>
+                <tr>
+                  <th colSpan={5} className="text-center">Vacuum Integrity - Breaker OPEN</th>
+                </tr>
+                <tr>
+                  <th></th>
+                  <th>P1</th>
+                  <th>P2</th>
+                  <th>P3</th>
+                  <th>Units</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Result:</td>
+                  <td><input value={formData.vacuumIntegrityOpen.p1 || ''} onChange={e => setField('vacuumIntegrityOpen.p1', e.target.value)} className="report-input text-center" /></td>
+                  <td><input value={formData.vacuumIntegrityOpen.p2 || ''} onChange={e => setField('vacuumIntegrityOpen.p2', e.target.value)} className="report-input text-center" /></td>
+                  <td><input value={formData.vacuumIntegrityOpen.p3 || ''} onChange={e => setField('vacuumIntegrityOpen.p3', e.target.value)} className="report-input text-center" /></td>
+                  <td>
+                    <select value={formData.vacuumIntegrityOpen.units || 'μA'} onChange={e => setField('vacuumIntegrityOpen.units', e.target.value)} className="report-input">
+                      {DIELECTRIC_WITHSTAND_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end gap-4 mt-2">
+            <div className="form-field">
+              <label>Test Voltage:</label>
+              <input value={formData.vacuumIntegrityOpen.testVoltage || ''} onChange={e => setField('vacuumIntegrityOpen.testVoltage', e.target.value)} className="report-input" style={{width: '100px'}} />
+            </div>
+            <div className="form-field">
+              <label>Test Duration:</label>
+              <input value={formData.vacuumIntegrityOpen.testDuration || '1 Min.'} onChange={e => setField('vacuumIntegrityOpen.testDuration', e.target.value)} className="report-input" style={{width: '100px'}} />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -356,31 +831,37 @@ const MediumVoltageCircuitBreakerReport: React.FC<MediumVoltageCircuitBreakerRep
       <section className="report-section">
         <div className="section-divider"></div>
         <h2 className="section-title">Test Equipment Used</h2>
-        <div className="equipment-grid">
-          <div className="equipment-row">
-            <label>Megohmeter:</label>
-            <input value={formData.testEquipment?.megohmmeter?.name || ''} onChange={e => setField('testEquipment.megohmmeter.name', e.target.value)} readOnly={!isEditing} className="report-input" placeholder="Name" />
-            <label>Serial #:</label>
-            <input value={formData.testEquipment?.megohmmeter?.serialNumber || ''} onChange={e => setField('testEquipment.megohmmeter.serialNumber', e.target.value)} readOnly={!isEditing} className="report-input" />
-            <label>AMP ID:</label>
-            <input value={formData.testEquipment?.megohmmeter?.ampId || ''} onChange={e => setField('testEquipment.megohmmeter.ampId', e.target.value)} readOnly={!isEditing} className="report-input" />
-          </div>
-          <div className="equipment-row">
-            <label>Low Resistance Ohmmeter:</label>
-            <input value={formData.testEquipment?.lowResistanceOhmmeter?.name || ''} onChange={e => setField('testEquipment.lowResistanceOhmmeter.name', e.target.value)} readOnly={!isEditing} className="report-input" placeholder="Name" />
-            <label>Serial #:</label>
-            <input value={formData.testEquipment?.lowResistanceOhmmeter?.serialNumber || ''} onChange={e => setField('testEquipment.lowResistanceOhmmeter.serialNumber', e.target.value)} readOnly={!isEditing} className="report-input" />
-            <label>AMP ID:</label>
-            <input value={formData.testEquipment?.lowResistanceOhmmeter?.ampId || ''} onChange={e => setField('testEquipment.lowResistanceOhmmeter.ampId', e.target.value)} readOnly={!isEditing} className="report-input" />
-          </div>
-          <div className="equipment-row">
-            <label>Timing Analyzer:</label>
-            <input value={formData.testEquipment?.timingAnalyzer?.name || ''} onChange={e => setField('testEquipment.timingAnalyzer.name', e.target.value)} readOnly={!isEditing} className="report-input" placeholder="Name" />
-            <label>Serial #:</label>
-            <input value={formData.testEquipment?.timingAnalyzer?.serialNumber || ''} onChange={e => setField('testEquipment.timingAnalyzer.serialNumber', e.target.value)} readOnly={!isEditing} className="report-input" />
-            <label>AMP ID:</label>
-            <input value={formData.testEquipment?.timingAnalyzer?.ampId || ''} onChange={e => setField('testEquipment.timingAnalyzer.ampId', e.target.value)} readOnly={!isEditing} className="report-input" />
-          </div>
+        <div className="table-container">
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th>Equipment</th>
+                <th>Model</th>
+                <th>Serial</th>
+                <th>ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Insulation Resistance Tester</td>
+                <td><input value={formData.testEquipment.insulationResistanceTester.model || ''} onChange={e => setField('testEquipment.insulationResistanceTester.model', e.target.value)} className="report-input" /></td>
+                <td><input value={formData.testEquipment.insulationResistanceTester.serial || ''} onChange={e => setField('testEquipment.insulationResistanceTester.serial', e.target.value)} className="report-input" /></td>
+                <td><input value={formData.testEquipment.insulationResistanceTester.id || ''} onChange={e => setField('testEquipment.insulationResistanceTester.id', e.target.value)} className="report-input" /></td>
+              </tr>
+              <tr>
+                <td>Micro-ohmmeter</td>
+                <td><input value={formData.testEquipment.microOhmmeter.model || ''} onChange={e => setField('testEquipment.microOhmmeter.model', e.target.value)} className="report-input" /></td>
+                <td><input value={formData.testEquipment.microOhmmeter.serial || ''} onChange={e => setField('testEquipment.microOhmmeter.serial', e.target.value)} className="report-input" /></td>
+                <td><input value={formData.testEquipment.microOhmmeter.id || ''} onChange={e => setField('testEquipment.microOhmmeter.id', e.target.value)} className="report-input" /></td>
+              </tr>
+              <tr>
+                <td>Hi-Pot Tester</td>
+                <td><input value={formData.testEquipment.hiPotTester.model || ''} onChange={e => setField('testEquipment.hiPotTester.model', e.target.value)} className="report-input" /></td>
+                <td><input value={formData.testEquipment.hiPotTester.serial || ''} onChange={e => setField('testEquipment.hiPotTester.serial', e.target.value)} className="report-input" /></td>
+                <td><input value={formData.testEquipment.hiPotTester.id || ''} onChange={e => setField('testEquipment.hiPotTester.id', e.target.value)} className="report-input" /></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -388,11 +869,16 @@ const MediumVoltageCircuitBreakerReport: React.FC<MediumVoltageCircuitBreakerRep
       <section className="report-section">
         <div className="section-divider"></div>
         <h2 className="section-title">Comments</h2>
-        <textarea className={`report-textarea ${!isEditing ? 'readonly' : ''}`} value={formData.comments || ''} onChange={e => setField('comments', e.target.value)} readOnly={!isEditing} rows={4} />
+        <textarea
+          value={formData.comments || ''}
+          onChange={e => setField('comments', e.target.value)}
+          className="report-input w-full"
+          rows={6}
+          placeholder="Enter any comments or notes here..."
+        />
       </section>
     </div>
   );
 };
 
 export default MediumVoltageCircuitBreakerReport;
-

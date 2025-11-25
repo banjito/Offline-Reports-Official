@@ -21,7 +21,9 @@ export { default as GroundingSystemMasterReport } from './GroundingSystemMasterR
 export { default as LowVoltageCableReport } from './LowVoltageCableReport';
 export { default as CurrentTransformerReport } from './CurrentTransformerReport';
 export { default as PotentialTransformerReport } from './PotentialTransformerReport';
+export { default as VoltagePotentialTransformerMTSReport } from './VoltagePotentialTransformerMTSReport';
 export { default as LiquidFilledTransformerReport } from './LiquidFilledTransformerReport';
+export { default as MediumVoltageSwitchMTSReport } from './MediumVoltageSwitchMTSReport';
 
 // Report type to component mapping
 import LowVoltageSwitchMultiDeviceReport from './LowVoltageSwitchMultiDeviceReport';
@@ -36,7 +38,9 @@ import GroundingSystemMasterReport from './GroundingSystemMasterReport';
 import LowVoltageCableReport from './LowVoltageCableReport';
 import CurrentTransformerReport from './CurrentTransformerReport';
 import PotentialTransformerReport from './PotentialTransformerReport';
+import VoltagePotentialTransformerMTSReport from './VoltagePotentialTransformerMTSReport';
 import LiquidFilledTransformerReport from './LiquidFilledTransformerReport';
+import MediumVoltageSwitchMTSReport from './MediumVoltageSwitchMTSReport';
 
 export const REPORT_COMPONENTS: { [key: string]: React.ComponentType<any> } = {
   // Low Voltage Switch Reports
@@ -85,7 +89,9 @@ export const REPORT_COMPONENTS: { [key: string]: React.ComponentType<any> } = {
   // Medium Voltage Switch Reports (Oil & SF6)
   'medium-voltage-switch-oil-report': MediumVoltageSwitchReport,
   'medium-voltage-switch-sf6-report': MediumVoltageSwitchReport,
-  '23-medium-voltage-switch-mts-report': MediumVoltageSwitchReport,
+  
+  // 23-Medium Voltage Switch MTS Report (different from Oil/SF6)
+  '23-medium-voltage-switch-mts-report': MediumVoltageSwitchMTSReport,
   
   // Grounding Reports
   'grounding-system-master': GroundingSystemMasterReport,
@@ -105,7 +111,7 @@ export const REPORT_COMPONENTS: { [key: string]: React.ComponentType<any> } = {
   
   // Potential Transformer Reports
   'potential-transformer-ats-report': PotentialTransformerReport,
-  '13-voltage-potential-transformer-test-mts-report': PotentialTransformerReport,
+  '13-voltage-potential-transformer-test-mts-report': VoltagePotentialTransformerMTSReport,
   
   // Additional Report Types (using closest matching renderer)
   'medium-voltage-vlf-tan-delta': LowVoltageCableReport,

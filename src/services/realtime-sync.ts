@@ -762,6 +762,8 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
               'metal-enclosed-busway': 'metal_enclosed_busway_reports',
               'low-voltage-circuit-breaker-thermal-magnetic-mts-report': 'low_voltage_circuit_breaker_thermal_magnetic_mts_reports',
               'low-voltage-circuit-breaker-electronic-trip-ats-report': 'low_voltage_circuit_breaker_electronic_trip_ats',
+              'low-voltage-circuit-breaker-electronic-trip-ats-primary-injection': 'low_voltage_circuit_breaker_electronic_trip_ats',
+              '8-low-voltage-circuit-breaker-electronic-trip-unit-ats-primary-injection': 'low_voltage_circuit_breaker_electronic_trip_ats',
               'low-voltage-circuit-breaker-electronic-trip-ats-secondary-injection-report': 'low_voltage_circuit_breaker_electronic_trip_ats',
               'low-voltage-circuit-breaker-thermal-magnetic-ats-report': 'low_voltage_circuit_breaker_thermal_magnetic_ats',
               'automatic-transfer-switch-ats-report': 'automatic_transfer_switch_ats_reports',
@@ -940,6 +942,112 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
                       }
                     });
                     
+                    // Flatten report_info into top level for desktop components
+                    // The desktop reports expect flat fields like reportData.customer, not reportData.report_info.customer
+                    if (reportData.report_info && typeof reportData.report_info === 'object') {
+                      const reportInfo = reportData.report_info;
+                      // Copy report_info fields to top level (don't overwrite existing fields)
+                      Object.keys(reportInfo).forEach(key => {
+                        if (reportData[key] === undefined) {
+                          reportData[key] = reportInfo[key];
+                        }
+                      });
+                      // Also keep the original report_info for backwards compatibility
+                    }
+                    
+                    // Also flatten report_data if it exists (some tables use report_data instead of report_info)
+                    if (reportData.report_data && typeof reportData.report_data === 'object') {
+                      const nestedData = reportData.report_data;
+                      Object.keys(nestedData).forEach(key => {
+                        if (reportData[key] === undefined) {
+                          reportData[key] = nestedData[key];
+                        }
+                      });
+                    }
+                    
+                    // Map Supabase column names to desktop component field names
+                    // Supabase uses snake_case, desktop uses camelCase with different structures
+                    // Different report types use different column names for visual inspection!
+                    
+                    // Visual inspection mapping - check all possible column names
+                    if (!reportData.visualInspectionItems) {
+                      // Try visual_mechanical (switchgear, panelboard)
+                      if (reportData.visual_mechanical?.items) {
+                        reportData.visualInspectionItems = reportData.visual_mechanical.items;
+                      }
+                      // Try visual_inspection (transformers, circuit breakers)
+                      else if (reportData.visual_inspection?.items) {
+                        reportData.visualInspectionItems = reportData.visual_inspection.items;
+                      }
+                      // Try visual_inspection_items (some reports use this)
+                      else if (reportData.visual_inspection_items) {
+                        reportData.visualInspectionItems = Array.isArray(reportData.visual_inspection_items) 
+                          ? reportData.visual_inspection_items 
+                          : reportData.visual_inspection_items.items || [];
+                      }
+                      // Try visualMechanical (camelCase variant)
+                      else if (reportData.visualMechanical?.items) {
+                        reportData.visualInspectionItems = reportData.visualMechanical.items;
+                      }
+                    }
+                    
+                    // Insulation resistance mapping - check 'data' column first (web app stores full formData there)
+                    if (reportData.data?.insulationResistance && !reportData.insulationResistance) {
+                      reportData.insulationResistance = reportData.data.insulationResistance;
+                    }
+                    if (reportData.insulation_resistance?.tests && !reportData.insulationResistanceTests) {
+                      reportData.insulationResistanceTests = reportData.insulation_resistance.tests;
+                    }
+                    if (reportData.insulation_resistance && !reportData.insulationResistance) {
+                      reportData.insulationResistance = reportData.insulation_resistance;
+                    }
+                    
+                    // Contact resistance mapping - check 'data' column first
+                    if (reportData.data?.contactResistance && !reportData.contactResistance) {
+                      reportData.contactResistance = reportData.data.contactResistance;
+                    }
+                    if (reportData.contact_resistance?.tests && !reportData.contactResistanceTests) {
+                      reportData.contactResistanceTests = reportData.contact_resistance.tests;
+                    }
+                    if (reportData.contact_resistance && !reportData.contactResistance) {
+                      reportData.contactResistance = reportData.contact_resistance;
+                    }
+                    
+                    // Test equipment mapping - check all possible column names
+                    if (!reportData.testEquipment) {
+                      if (reportData.test_equipment_used) {
+                        reportData.testEquipment = reportData.test_equipment_used;
+                      }
+                      else if (reportData.test_equipment) {
+                        reportData.testEquipment = reportData.test_equipment;
+                      }
+                      // Also check inside report_info for testEquipment
+                      else if (reportData.report_info?.testEquipment) {
+                        reportData.testEquipment = reportData.report_info.testEquipment;
+                      }
+                    }
+                    
+                    // Nameplate data mapping (web app uses nameplateData, may be in 'data' column)
+                    if (reportData.data?.nameplateData && !reportData.nameplateData) {
+                      reportData.nameplateData = reportData.data.nameplateData;
+                    }
+                    if (reportData.nameplate_data && !reportData.nameplateData) {
+                      reportData.nameplateData = reportData.nameplate_data;
+                    }
+                    if (reportData.nameplate && !reportData.nameplateData) {
+                      reportData.nameplateData = reportData.nameplate;
+                    }
+                    
+                    // Primary injection mapping (for circuit breaker reports)
+                    if (reportData.primary_injection && !reportData.primaryInjection) {
+                      reportData.primaryInjection = reportData.primary_injection;
+                    }
+                    
+                    // Device settings mapping
+                    if (reportData.device_settings && !reportData.deviceSettings) {
+                      reportData.deviceSettings = reportData.device_settings;
+                    }
+                    
                     const localReport = {
                       id: report.id,
                       job_id: report.job_id,
@@ -1102,6 +1210,8 @@ const SLUG_TO_TABLE: Record<string, string> = {
   'metal-enclosed-busway': 'metal_enclosed_busway_reports',
   'low-voltage-circuit-breaker-thermal-magnetic-mts-report': 'low_voltage_circuit_breaker_thermal_magnetic_mts_reports',
   'low-voltage-circuit-breaker-electronic-trip-ats-report': 'low_voltage_circuit_breaker_electronic_trip_ats',
+  'low-voltage-circuit-breaker-electronic-trip-ats-primary-injection': 'low_voltage_circuit_breaker_electronic_trip_ats',
+  '8-low-voltage-circuit-breaker-electronic-trip-unit-ats-primary-injection': 'low_voltage_circuit_breaker_electronic_trip_ats',
   'low-voltage-circuit-breaker-electronic-trip-ats-secondary-injection-report': 'low_voltage_circuit_breaker_electronic_trip_ats',
   'low-voltage-circuit-breaker-thermal-magnetic-ats-report': 'low_voltage_circuit_breaker_thermal_magnetic_ats',
   'automatic-transfer-switch-ats-report': 'automatic_transfer_switch_ats_reports',

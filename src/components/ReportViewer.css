@@ -199,21 +199,21 @@
   word-wrap: break-word;
   max-height: 400px;
   overflow-y: auto;
-}
+  }
 
 .error {
   text-align: center;
   padding: 40px;
   color: #dc3545;
-}
+  }
 
 .error h2 {
   margin-bottom: 20px;
   color: #dc3545;
-}
+  }
 
 .loading {
   text-align: center;
   padding: 40px;
   color: #666;
-}
+  }

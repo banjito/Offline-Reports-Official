@@ -374,9 +374,7 @@ export class SyncService {
 
       for (const tableName of tables) {
         try {
-          // Use neta_ops schema for report tables
           const { data, error } = await supabase
-            .schema('neta_ops')
             .from(tableName)
             .select('*')
             .in('job_id', jobIds);
@@ -390,47 +388,30 @@ export class SyncService {
           if (!data || data.length === 0) continue;
 
           const reports = data as any[];
-          console.log(`📥 Found ${reports.length} reports in ${tableName}`);
 
           for (const remoteReport of reports) {
             // Map remote columns back to local Report structure
             const reportType = this.tableToSlug[tableName] || 'unknown-report';
 
-            // CRITICAL: Deep clone the ENTIRE remote report to capture ALL columns
-            // This preserves all nested structures like switches[], fuses[], irMeasured[], etc.
-            const reportData = JSON.parse(JSON.stringify(remoteReport));
-
-            // Remove metadata fields from report_data (they're stored separately)
-            delete reportData.id;
-            delete reportData.job_id;
-            delete reportData.user_id;
-            delete reportData.created_at;
-            delete reportData.updated_at;
-
-            // Log what we're capturing for debugging
-            const dataKeys = Object.keys(reportData);
-            console.log(`  📋 Report ${remoteReport.id}: ${dataKeys.length} data fields`);
-            if (dataKeys.length > 5) {
-              console.log(`     Fields: ${dataKeys.slice(0, 10).join(', ')}${dataKeys.length > 10 ? '...' : ''}`);
-            }
-
-            // Extract title from various possible locations
-            let title = reportType.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            if (reportData.report_info?.jobInfo?.reportTitle) {
-              title = reportData.report_info.jobInfo.reportTitle;
-            } else if (reportData.report_info?.identifier) {
-              title = `${title} - ${reportData.report_info.identifier}`;
-            } else if (reportData.report_info?.eqptLocation) {
-              title = `${title} - ${reportData.report_info.eqptLocation}`;
-            }
+            // Reconstruct report_data from columns
+            const reportData = {
+              ...remoteReport.report_info, // Spread report_info if it exists
+              report_info: remoteReport.report_info,
+              visual_inspection_items: remoteReport.visual_inspection_items,
+              test_equipment_used: remoteReport.test_equipment_used,
+              insulation_resistance: remoteReport.insulation_resistance,
+              contact_resistance: remoteReport.contact_resistance,
+              nameplate_data: remoteReport.nameplate_data,
+              comments: remoteReport.comments
+            };
 
             const localReport: Report = {
               id: remoteReport.id,
               job_id: remoteReport.job_id,
-              title: title,
+              title: remoteReport.report_info?.jobInfo?.reportTitle || reportType, // Try to find title
               report_type: reportType,
-              status: reportData.status || 'draft',
-              report_data: reportData, // Contains ALL columns from remote
+              status: 'draft', // Default to draft if status missing
+              report_data: reportData,
               submitted_by: remoteReport.user_id,
               submitted_at: remoteReport.created_at,
               current_version: 1,

@@ -126,3 +126,5 @@ export const getReportTable = (slug: string): string => {
 // List of all supported report types for the dropdown
 export const ALL_REPORT_TYPES = Object.keys(REPORT_NAMES);
 
+
+

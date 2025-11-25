@@ -15,10 +15,12 @@ import {
   MediumVoltageCircuitBreakerReport,
   AutomaticTransferSwitchReport,
   MediumVoltageSwitchReport,
+  MediumVoltageSwitchMTSReport,
   GroundingSystemMasterReport,
   LowVoltageCableReport,
   CurrentTransformerReport,
   PotentialTransformerReport,
+  VoltagePotentialTransformerMTSReport,
   LiquidFilledTransformerReport,
   getCircuitBreakerVariant,
   getMVSwitchVariant,
@@ -68,7 +70,7 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
       if (reportResult.success && reportResult.data) {
         const reportData = reportResult.data;
         setReport(reportData);
-
+        
         // Determine report type from report_data
         if (typeof reportData.report_data === 'string') {
           try {
@@ -166,6 +168,8 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
       
       // Low Voltage Circuit Breaker Reports
       case 'low-voltage-circuit-breaker-electronic-trip-ats-report':
+      case 'low-voltage-circuit-breaker-electronic-trip-ats-primary-injection':
+      case '8-low-voltage-circuit-breaker-electronic-trip-unit-ats-primary-injection':
       case 'low-voltage-circuit-breaker-electronic-trip-ats-secondary-injection-report':
       case 'low-voltage-circuit-breaker-thermal-magnetic-ats-report':
       case 'low-voltage-circuit-breaker-electronic-trip-mts-report':
@@ -204,13 +208,22 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
       // Medium Voltage Switch Reports (Oil & SF6)
       case 'medium-voltage-switch-oil-report':
       case 'medium-voltage-switch-sf6-report':
-      case '23-medium-voltage-switch-mts-report':
         return (
           <MediumVoltageSwitchReport
             job={job}
             reportData={reportData}
             onSave={handleSave}
             variant={getMVSwitchVariant(reportType)}
+          />
+        );
+      
+      // 23-Medium Voltage Switch MTS Report (different structure from Oil/SF6)
+      case '23-medium-voltage-switch-mts-report':
+        return (
+          <MediumVoltageSwitchMTSReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
           />
         );
       
@@ -224,7 +237,7 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
             onSave={handleSave}
           />
         );
-      
+
       // Low Voltage Cable Reports
       case 'low-voltage-cable-test-12sets':
       case 'low-voltage-cable-test-20sets':
@@ -252,10 +265,9 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
             variant={getTransformerTestVariant(reportType)}
           />
         );
-      
+
       // Potential Transformer Reports
       case 'potential-transformer-ats-report':
-      case '13-voltage-potential-transformer-test-mts-report':
         return (
           <PotentialTransformerReport
             job={job}
@@ -265,6 +277,15 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
           />
         );
       
+      case '13-voltage-potential-transformer-test-mts-report':
+        return (
+          <VoltagePotentialTransformerMTSReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+        
       // Medium Voltage VLF/Tan Delta Reports (using Cable report as base)
       case 'medium-voltage-vlf-tan-delta':
       case 'medium-voltage-vlf':
@@ -291,7 +312,7 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
             onSave={handleSave}
           />
         );
-      
+        
       // Motor Starter (using MV Switch as similar structure)
       case '23-medium-voltage-motor-starter-mts-report':
         return (
@@ -302,7 +323,7 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
             variant={getMVSwitchVariant(reportType)}
           />
         );
-      
+          
       // Relay Test (using MV Circuit Breaker as similar structure)
       case 'relay-test-report':
         return (
@@ -384,7 +405,7 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
           <h2>Report Not Found</h2>
           <button onClick={() => navigate('/')} className="btn-secondary">
             Back to Jobs
-          </button>
+        </button>
         </div>
       </div>
     );
@@ -395,7 +416,7 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
       <div className="report-header">
         <button onClick={() => navigate('/')} className="back-button">
           ← Back to Jobs
-        </button>
+          </button>
         <div className="report-info">
           <h1>{report.title || `Report ${reportId?.substring(0, 8)}`}</h1>
           <span className="report-type">{reportType.replace(/-/g, ' ').toUpperCase()}</span>

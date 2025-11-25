@@ -74,8 +74,8 @@ export function SyncStatus({
             </>
           ) : (
             <>
-              <span className="sync-icon">⬆</span>
-              Sync TO DB
+          <span className="sync-icon">⬆</span>
+          Sync TO DB
             </>
           )}
         </button>
