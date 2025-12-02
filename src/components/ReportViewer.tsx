@@ -16,17 +16,32 @@ import {
   AutomaticTransferSwitchReport,
   MediumVoltageSwitchReport,
   MediumVoltageSwitchMTSReport,
+  MediumVoltageMotorStarterMTSReport,
+  MetalEnclosedBuswayReport,
+  MediumVoltageVLFReport,
   GroundingSystemMasterReport,
   LowVoltageCableReport,
   CurrentTransformerReport,
   PotentialTransformerReport,
   VoltagePotentialTransformerMTSReport,
   LiquidFilledTransformerReport,
+  // New VLF Report Components
+  TanDeltaChartReport,
+  TanDeltaChartMTSReport,
+  MediumVoltageVLFATSReport,
+  MediumVoltageVLFMTSReportNew,
+  MediumVoltageCableVLFTestReport,
   getCircuitBreakerVariant,
   getMVSwitchVariant,
   getCableVariant,
   getTransformerTestVariant
 } from './reports';
+import LiquidFilledXfmrATS25Report from './reports/LiquidFilledXfmrATS25Report';
+import SmallLVDryTypeTransformerATS25Report from './reports/SmallLVDryTypeTransformerATS25Report';
+import SwitchgearSwitchboardATS25Report from './reports/SwitchgearSwitchboardATS25Report';
+import PanelboardAssembliesATS25Report from './reports/PanelboardAssembliesATS25Report';
+import SwitchgearPanelboardMTSReport from './reports/SwitchgearPanelboardMTSReport';
+import TwoSmallDryTypeXfmrATSReport from './reports/TwoSmallDryTypeXfmrATSReport';
 
 interface ReportViewerProps {
   jobId?: string;
@@ -118,7 +133,7 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
       case 'panelboard-report':
       case 'panelboard-assemblies-ats25':
         return (
-          <PanelboardReport
+          <PanelboardAssembliesATS25Report
             job={job}
             reportData={reportData}
             onSave={handleSave}
@@ -128,9 +143,16 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
       // Switchgear Reports
       case 'switchgear-report':
       case 'switchgear-switchboard-assemblies-ats25':
+        return (
+          <SwitchgearSwitchboardATS25Report
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
       case 'switchgear-panelboard-mts-report':
         return (
-          <SwitchgearReport
+          <SwitchgearPanelboardMTSReport
             job={job}
             reportData={reportData}
             onSave={handleSave}
@@ -143,10 +165,19 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
       case 'large-dry-type-transformer':
       case 'large-dry-type-transformer-mts-report':
       case 'large-dry-type-xfmr-mts-report':
-      case 'two-small-dry-typer-xfmr-ats-report':
       case 'two-small-dry-typer-xfmr-mts-report':
+      case 'small-lv-dry-type-transformer-ats25':
         return (
-          <DryTypeTransformerReport
+          <SmallLVDryTypeTransformerATS25Report
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+      
+      case 'two-small-dry-typer-xfmr-ats-report':
+        return (
+          <TwoSmallDryTypeXfmrATSReport
             job={job}
             reportData={reportData}
             onSave={handleSave}
@@ -163,6 +194,17 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
             reportData={reportData}
             onSave={handleSave}
             variant={reportType.includes('mts') ? 'mts' : 'ats'}
+          />
+        );
+      
+      // Liquid Filled Transformer ATS 25 Report
+      case 'liquid-filled-xfmr-ats25':
+        return (
+          <LiquidFilledXfmrATS25Report
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+            isEditing={true}
           />
         );
       
@@ -265,7 +307,7 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
             variant={getTransformerTestVariant(reportType)}
           />
         );
-
+        
       // Potential Transformer Reports
       case 'potential-transformer-ats-report':
         return (
@@ -285,42 +327,93 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
             onSave={handleSave}
           />
         );
-        
-      // Medium Voltage VLF/Tan Delta Reports (using Cable report as base)
+          
+      // Medium Voltage VLF - Tan Delta Chart ATS
       case 'medium-voltage-vlf-tan-delta':
-      case 'medium-voltage-vlf':
-      case 'medium-voltage-cable-vlf-test':
+        return (
+          <TanDeltaChartReport
+            job={job}
+            reportData={reportData}
+            isEditing={true}
+            onSave={handleSave}
+          />
+        );
+        
+      // Medium Voltage VLF - Tan Delta Chart MTS
       case 'medium-voltage-vlf-tan-delta-mts':
-      case 'medium-voltage-vlf-mts-report':
-      case 'medium-voltage-cable-vlf-test-mts':
       case 'electrical-tan-delta-test-mts-form':
         return (
-          <LowVoltageCableReport
+          <TanDeltaChartMTSReport
             job={job}
             reportData={reportData}
-            onSave={handleSave}
-            variant={getCableVariant(reportType)}
-          />
-        );
-      
-      // Metal Enclosed Busway (using Switchgear as similar structure)
-      case 'metal-enclosed-busway':
-        return (
-          <SwitchgearReport
-            job={job}
-            reportData={reportData}
+            isEditing={true}
             onSave={handleSave}
           />
         );
         
-      // Motor Starter (using MV Switch as similar structure)
-      case '23-medium-voltage-motor-starter-mts-report':
+      // Medium Voltage VLF - Full VLF Test ATS
+      case 'medium-voltage-vlf':
         return (
-          <MediumVoltageSwitchReport
+          <MediumVoltageVLFATSReport
             job={job}
             reportData={reportData}
+            isEditing={true}
             onSave={handleSave}
-            variant={getMVSwitchVariant(reportType)}
+          />
+        );
+        
+      // Medium Voltage VLF - Full VLF Test MTS
+      case 'medium-voltage-vlf-mts-report':
+        return (
+          <MediumVoltageVLFMTSReportNew
+            job={job}
+            reportData={reportData}
+            isEditing={true}
+            onSave={handleSave}
+          />
+        );
+        
+      // Medium Voltage VLF - Combined VLF + Tan Delta ATS
+      case 'medium-voltage-cable-vlf-test':
+        return (
+          <MediumVoltageCableVLFTestReport
+            job={job}
+            reportData={reportData}
+            isEditing={true}
+            onSave={handleSave}
+            isMTS={false}
+          />
+        );
+        
+      // Medium Voltage VLF - Combined VLF + Tan Delta MTS
+      case 'medium-voltage-cable-vlf-test-mts':
+        return (
+          <MediumVoltageCableVLFTestReport
+            job={job}
+            reportData={reportData}
+            isEditing={true}
+            onSave={handleSave}
+            isMTS={true}
+          />
+        );
+        
+      // Metal Enclosed Busway
+      case 'metal-enclosed-busway':
+        return (
+          <MetalEnclosedBuswayReport
+            reportData={reportData}
+            isEditing={true}
+            onSave={handleSave}
+          />
+        );
+        
+      // Motor Starter
+      case '23-medium-voltage-motor-starter-mts-report':
+        return (
+          <MediumVoltageMotorStarterMTSReport
+            reportData={reportData}
+            isEditing={true}
+            onSave={handleSave}
           />
         );
           

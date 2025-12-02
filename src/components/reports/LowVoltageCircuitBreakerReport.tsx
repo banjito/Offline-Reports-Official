@@ -753,24 +753,24 @@ const LowVoltageCircuitBreakerReport: React.FC<LowVoltageCircuitBreakerReportPro
         </div>
 
         {/* Primary Injection Results Table */}
-        <div className="table-container">
-          <table className="report-table" style={{ fontSize: '0.8rem' }}>
+        <div className="table-container" style={{ overflowX: 'auto' }}>
+          <table className="report-table" style={{ fontSize: '0.85rem', minWidth: '1200px', tableLayout: 'fixed' }}>
             <thead>
               <tr>
-                <th rowSpan={2} style={{ width: '10%' }}>Function</th>
-                <th rowSpan={2} style={{ width: '10%' }}>Rated Amperes</th>
-                <th colSpan={2} style={{ width: '12%', textAlign: 'center' }}>Multiplier %</th>
-                <th rowSpan={2} style={{ width: '10%' }}>Test Amperes</th>
-                <th colSpan={2} style={{ width: '12%', textAlign: 'center' }}>Tolerance</th>
-                <th style={{ width: '15%', textAlign: 'center' }}>Pole 1</th>
-                <th style={{ width: '15%', textAlign: 'center' }}>Pole 2</th>
-                <th style={{ width: '15%', textAlign: 'center' }}>Pole 3</th>
+                <th rowSpan={2} style={{ width: '100px', minWidth: '100px' }}>Function</th>
+                <th rowSpan={2} style={{ width: '100px', minWidth: '100px' }}>Rated Amperes</th>
+                <th colSpan={2} style={{ width: '140px', minWidth: '140px', textAlign: 'center' }}>Multiplier %</th>
+                <th rowSpan={2} style={{ width: '100px', minWidth: '100px' }}>Test Amperes</th>
+                <th colSpan={2} style={{ width: '140px', minWidth: '140px', textAlign: 'center' }}>Tolerance</th>
+                <th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Pole 1</th>
+                <th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Pole 2</th>
+                <th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Pole 3</th>
               </tr>
               <tr>
-                <th></th>
-                <th></th>
-                <th style={{ textAlign: 'center' }}>Min</th>
-                <th style={{ textAlign: 'center' }}>Max</th>
+                <th style={{ width: '70px' }}></th>
+                <th style={{ width: '70px' }}></th>
+                <th style={{ width: '70px', textAlign: 'center' }}>Min</th>
+                <th style={{ width: '70px', textAlign: 'center' }}>Max</th>
                 <th style={{ textAlign: 'center' }}>sec.</th>
                 <th style={{ textAlign: 'center' }}>sec.</th>
                 <th style={{ textAlign: 'center' }}>sec.</th>
@@ -779,110 +779,162 @@ const LowVoltageCircuitBreakerReport: React.FC<LowVoltageCircuitBreakerReportPro
             <tbody>
               {/* Long Time - Row 1 */}
               <tr>
-                <td rowSpan={2}>Long Time</td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.ratedAmperes1 || ''} onChange={e => setField('primaryInjection.results.longTime.ratedAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
+                <td rowSpan={2} style={{ fontWeight: 600 }}>Long Time</td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.ratedAmperes1 || ''} onChange={e => setField('primaryInjection.results.longTime.ratedAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
                 <td colSpan={2} style={{ textAlign: 'center' }}>
-                  <input value={(formData.primaryInjection?.results?.longTime?.multiplier || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.longTime.multiplier', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '60%' }} /> %
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <input value={(formData.primaryInjection?.results?.longTime?.multiplier || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.longTime.multiplier', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '70px' }} />
+                    <span>%</span>
+                  </div>
                 </td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.testAmperes1 || ''} onChange={e => setField('primaryInjection.results.longTime.testAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.toleranceMin1 || ''} onChange={e => setField('primaryInjection.results.longTime.toleranceMin1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.toleranceMax1 || ''} onChange={e => setField('primaryInjection.results.longTime.toleranceMax1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.pole1?.sec || ''} onChange={e => setField('primaryInjection.results.longTime.pole1.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.pole2?.sec || ''} onChange={e => setField('primaryInjection.results.longTime.pole2.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.pole3?.sec || ''} onChange={e => setField('primaryInjection.results.longTime.pole3.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.testAmperes1 || ''} onChange={e => setField('primaryInjection.results.longTime.testAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.toleranceMin1 || ''} onChange={e => setField('primaryInjection.results.longTime.toleranceMin1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.toleranceMax1 || ''} onChange={e => setField('primaryInjection.results.longTime.toleranceMax1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.pole1?.sec || ''} onChange={e => setField('primaryInjection.results.longTime.pole1.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.pole2?.sec || ''} onChange={e => setField('primaryInjection.results.longTime.pole2.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.pole3?.sec || ''} onChange={e => setField('primaryInjection.results.longTime.pole3.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
               </tr>
               {/* Long Time - Row 2 (LTPU) */}
               <tr>
-                <td>LTPU</td>
-                <td><input value={(formData.primaryInjection?.results?.longTime?.toleranceMin || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.longTime.toleranceMin', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '60%' }} /> %</td>
-                <td><input value={(formData.primaryInjection?.results?.longTime?.toleranceMax || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.longTime.toleranceMax', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '60%' }} /> %</td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.ratedAmperes2 || ''} onChange={e => setField('primaryInjection.results.longTime.ratedAmperes2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.toleranceMin2 || ''} onChange={e => setField('primaryInjection.results.longTime.toleranceMin2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.toleranceMax2 || ''} onChange={e => setField('primaryInjection.results.longTime.toleranceMax2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.pole1?.a || ''} onChange={e => setField('primaryInjection.results.longTime.pole1.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.pole2?.a || ''} onChange={e => setField('primaryInjection.results.longTime.pole2.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.longTime?.pole3?.a || ''} onChange={e => setField('primaryInjection.results.longTime.pole3.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
+                <td style={{ fontSize: '0.8rem', color: '#666' }}>LTPU</td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <input value={(formData.primaryInjection?.results?.longTime?.toleranceMin || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.longTime.toleranceMin', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '50px' }} />
+                    <span>%</span>
+                  </div>
+                </td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <input value={(formData.primaryInjection?.results?.longTime?.toleranceMax || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.longTime.toleranceMax', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '50px' }} />
+                    <span>%</span>
+                  </div>
+                </td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.ratedAmperes2 || ''} onChange={e => setField('primaryInjection.results.longTime.ratedAmperes2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.toleranceMin2 || ''} onChange={e => setField('primaryInjection.results.longTime.toleranceMin2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.toleranceMax2 || ''} onChange={e => setField('primaryInjection.results.longTime.toleranceMax2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.pole1?.a || ''} onChange={e => setField('primaryInjection.results.longTime.pole1.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.pole2?.a || ''} onChange={e => setField('primaryInjection.results.longTime.pole2.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.longTime?.pole3?.a || ''} onChange={e => setField('primaryInjection.results.longTime.pole3.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
               </tr>
 
               {/* Short Time - Row 1 */}
               <tr>
-                <td rowSpan={2}>Short Time</td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.ratedAmperes1 || ''} onChange={e => setField('primaryInjection.results.shortTime.ratedAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
+                <td rowSpan={2} style={{ fontWeight: 600 }}>Short Time</td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.ratedAmperes1 || ''} onChange={e => setField('primaryInjection.results.shortTime.ratedAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
                 <td colSpan={2} style={{ textAlign: 'center' }}>
-                  <input value={(formData.primaryInjection?.results?.shortTime?.multiplier || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.shortTime.multiplier', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '60%' }} /> %
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <input value={(formData.primaryInjection?.results?.shortTime?.multiplier || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.shortTime.multiplier', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '70px' }} />
+                    <span>%</span>
+                  </div>
                 </td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.testAmperes1 || ''} onChange={e => setField('primaryInjection.results.shortTime.testAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.toleranceMin1 || ''} onChange={e => setField('primaryInjection.results.shortTime.toleranceMin1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.toleranceMax1 || ''} onChange={e => setField('primaryInjection.results.shortTime.toleranceMax1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.pole1?.sec || ''} onChange={e => setField('primaryInjection.results.shortTime.pole1.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.pole2?.sec || ''} onChange={e => setField('primaryInjection.results.shortTime.pole2.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.pole3?.sec || ''} onChange={e => setField('primaryInjection.results.shortTime.pole3.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.testAmperes1 || ''} onChange={e => setField('primaryInjection.results.shortTime.testAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.toleranceMin1 || ''} onChange={e => setField('primaryInjection.results.shortTime.toleranceMin1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.toleranceMax1 || ''} onChange={e => setField('primaryInjection.results.shortTime.toleranceMax1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.pole1?.sec || ''} onChange={e => setField('primaryInjection.results.shortTime.pole1.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.pole2?.sec || ''} onChange={e => setField('primaryInjection.results.shortTime.pole2.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.pole3?.sec || ''} onChange={e => setField('primaryInjection.results.shortTime.pole3.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
               </tr>
               {/* Short Time - Row 2 (STPU) */}
               <tr>
-                <td>STPU</td>
-                <td><input value={(formData.primaryInjection?.results?.shortTime?.toleranceMin || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.shortTime.toleranceMin', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '60%' }} /> %</td>
-                <td><input value={(formData.primaryInjection?.results?.shortTime?.toleranceMax || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.shortTime.toleranceMax', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '60%' }} /> %</td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.ratedAmperes2 || ''} onChange={e => setField('primaryInjection.results.shortTime.ratedAmperes2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.toleranceMin2 || ''} onChange={e => setField('primaryInjection.results.shortTime.toleranceMin2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.toleranceMax2 || ''} onChange={e => setField('primaryInjection.results.shortTime.toleranceMax2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.pole1?.a || ''} onChange={e => setField('primaryInjection.results.shortTime.pole1.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.pole2?.a || ''} onChange={e => setField('primaryInjection.results.shortTime.pole2.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.shortTime?.pole3?.a || ''} onChange={e => setField('primaryInjection.results.shortTime.pole3.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
+                <td style={{ fontSize: '0.8rem', color: '#666' }}>STPU</td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <input value={(formData.primaryInjection?.results?.shortTime?.toleranceMin || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.shortTime.toleranceMin', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '50px' }} />
+                    <span>%</span>
+                  </div>
+                </td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <input value={(formData.primaryInjection?.results?.shortTime?.toleranceMax || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.shortTime.toleranceMax', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '50px' }} />
+                    <span>%</span>
+                  </div>
+                </td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.ratedAmperes2 || ''} onChange={e => setField('primaryInjection.results.shortTime.ratedAmperes2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.toleranceMin2 || ''} onChange={e => setField('primaryInjection.results.shortTime.toleranceMin2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.toleranceMax2 || ''} onChange={e => setField('primaryInjection.results.shortTime.toleranceMax2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.pole1?.a || ''} onChange={e => setField('primaryInjection.results.shortTime.pole1.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.pole2?.a || ''} onChange={e => setField('primaryInjection.results.shortTime.pole2.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.shortTime?.pole3?.a || ''} onChange={e => setField('primaryInjection.results.shortTime.pole3.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
               </tr>
 
               {/* Instantaneous - Row 1 */}
               <tr>
-                <td rowSpan={2}>Instantaneous</td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.ratedAmperes1 || ''} onChange={e => setField('primaryInjection.results.instantaneous.ratedAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
+                <td rowSpan={2} style={{ fontWeight: 600 }}>Instantaneous</td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.ratedAmperes1 || ''} onChange={e => setField('primaryInjection.results.instantaneous.ratedAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
                 <td colSpan={2} style={{ textAlign: 'center' }}>
-                  <input value={(formData.primaryInjection?.results?.instantaneous?.multiplier || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.instantaneous.multiplier', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '60%' }} /> %
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <input value={(formData.primaryInjection?.results?.instantaneous?.multiplier || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.instantaneous.multiplier', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '70px' }} />
+                    <span>%</span>
+                  </div>
                 </td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.testAmperes1 || ''} onChange={e => setField('primaryInjection.results.instantaneous.testAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.toleranceMin1 || ''} onChange={e => setField('primaryInjection.results.instantaneous.toleranceMin1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.toleranceMax1 || ''} onChange={e => setField('primaryInjection.results.instantaneous.toleranceMax1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.pole1?.sec || ''} onChange={e => setField('primaryInjection.results.instantaneous.pole1.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.pole2?.sec || ''} onChange={e => setField('primaryInjection.results.instantaneous.pole2.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.pole3?.sec || ''} onChange={e => setField('primaryInjection.results.instantaneous.pole3.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.testAmperes1 || ''} onChange={e => setField('primaryInjection.results.instantaneous.testAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.toleranceMin1 || ''} onChange={e => setField('primaryInjection.results.instantaneous.toleranceMin1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.toleranceMax1 || ''} onChange={e => setField('primaryInjection.results.instantaneous.toleranceMax1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.pole1?.sec || ''} onChange={e => setField('primaryInjection.results.instantaneous.pole1.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.pole2?.sec || ''} onChange={e => setField('primaryInjection.results.instantaneous.pole2.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.pole3?.sec || ''} onChange={e => setField('primaryInjection.results.instantaneous.pole3.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
               </tr>
               {/* Instantaneous - Row 2 */}
               <tr>
                 <td></td>
-                <td><input value={(formData.primaryInjection?.results?.instantaneous?.toleranceMin || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.instantaneous.toleranceMin', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '60%' }} /> %</td>
-                <td><input value={(formData.primaryInjection?.results?.instantaneous?.toleranceMax || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.instantaneous.toleranceMax', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '60%' }} /> %</td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.ratedAmperes2 || ''} onChange={e => setField('primaryInjection.results.instantaneous.ratedAmperes2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.toleranceMin2 || ''} onChange={e => setField('primaryInjection.results.instantaneous.toleranceMin2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.toleranceMax2 || ''} onChange={e => setField('primaryInjection.results.instantaneous.toleranceMax2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.pole1?.a || ''} onChange={e => setField('primaryInjection.results.instantaneous.pole1.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.pole2?.a || ''} onChange={e => setField('primaryInjection.results.instantaneous.pole2.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.instantaneous?.pole3?.a || ''} onChange={e => setField('primaryInjection.results.instantaneous.pole3.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <input value={(formData.primaryInjection?.results?.instantaneous?.toleranceMin || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.instantaneous.toleranceMin', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '50px' }} />
+                    <span>%</span>
+                  </div>
+                </td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <input value={(formData.primaryInjection?.results?.instantaneous?.toleranceMax || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.instantaneous.toleranceMax', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '50px' }} />
+                    <span>%</span>
+                  </div>
+                </td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.ratedAmperes2 || ''} onChange={e => setField('primaryInjection.results.instantaneous.ratedAmperes2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.toleranceMin2 || ''} onChange={e => setField('primaryInjection.results.instantaneous.toleranceMin2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.toleranceMax2 || ''} onChange={e => setField('primaryInjection.results.instantaneous.toleranceMax2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.pole1?.a || ''} onChange={e => setField('primaryInjection.results.instantaneous.pole1.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.pole2?.a || ''} onChange={e => setField('primaryInjection.results.instantaneous.pole2.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.instantaneous?.pole3?.a || ''} onChange={e => setField('primaryInjection.results.instantaneous.pole3.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
               </tr>
 
               {/* Ground Fault - Row 1 */}
               <tr>
-                <td rowSpan={2}>Ground Fault</td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.ratedAmperes1 || ''} onChange={e => setField('primaryInjection.results.groundFault.ratedAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
+                <td rowSpan={2} style={{ fontWeight: 600 }}>Ground Fault</td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.ratedAmperes1 || ''} onChange={e => setField('primaryInjection.results.groundFault.ratedAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
                 <td colSpan={2} style={{ textAlign: 'center' }}>
-                  <input value={(formData.primaryInjection?.results?.groundFault?.multiplier || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.groundFault.multiplier', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '60%' }} /> %
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <input value={(formData.primaryInjection?.results?.groundFault?.multiplier || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.groundFault.multiplier', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '70px' }} />
+                    <span>%</span>
+                  </div>
                 </td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.testAmperes1 || ''} onChange={e => setField('primaryInjection.results.groundFault.testAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.toleranceMin1 || ''} onChange={e => setField('primaryInjection.results.groundFault.toleranceMin1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.toleranceMax1 || ''} onChange={e => setField('primaryInjection.results.groundFault.toleranceMax1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.pole1?.sec || ''} onChange={e => setField('primaryInjection.results.groundFault.pole1.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.pole2?.sec || ''} onChange={e => setField('primaryInjection.results.groundFault.pole2.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.pole3?.sec || ''} onChange={e => setField('primaryInjection.results.groundFault.pole3.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.testAmperes1 || ''} onChange={e => setField('primaryInjection.results.groundFault.testAmperes1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.toleranceMin1 || ''} onChange={e => setField('primaryInjection.results.groundFault.toleranceMin1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.toleranceMax1 || ''} onChange={e => setField('primaryInjection.results.groundFault.toleranceMax1', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.pole1?.sec || ''} onChange={e => setField('primaryInjection.results.groundFault.pole1.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.pole2?.sec || ''} onChange={e => setField('primaryInjection.results.groundFault.pole2.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.pole3?.sec || ''} onChange={e => setField('primaryInjection.results.groundFault.pole3.sec', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
               </tr>
               {/* Ground Fault - Row 2 (GFPU) */}
               <tr>
-                <td>GFPU</td>
-                <td><input value={(formData.primaryInjection?.results?.groundFault?.toleranceMin || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.groundFault.toleranceMin', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '60%' }} /> %</td>
-                <td><input value={(formData.primaryInjection?.results?.groundFault?.toleranceMax || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.groundFault.toleranceMax', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '60%' }} /> %</td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.ratedAmperes2 || ''} onChange={e => setField('primaryInjection.results.groundFault.ratedAmperes2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.toleranceMin2 || ''} onChange={e => setField('primaryInjection.results.groundFault.toleranceMin2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.toleranceMax2 || ''} onChange={e => setField('primaryInjection.results.groundFault.toleranceMax2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.pole1?.a || ''} onChange={e => setField('primaryInjection.results.groundFault.pole1.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.pole2?.a || ''} onChange={e => setField('primaryInjection.results.groundFault.pole2.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
-                <td><input value={formData.primaryInjection?.results?.groundFault?.pole3?.a || ''} onChange={e => setField('primaryInjection.results.groundFault.pole3.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center' }} /></td>
+                <td style={{ fontSize: '0.8rem', color: '#666' }}>GFPU</td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <input value={(formData.primaryInjection?.results?.groundFault?.toleranceMin || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.groundFault.toleranceMin', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '50px' }} />
+                    <span>%</span>
+                  </div>
+                </td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <input value={(formData.primaryInjection?.results?.groundFault?.toleranceMax || '').replace(/%/g, '')} onChange={e => setField('primaryInjection.results.groundFault.toleranceMax', e.target.value ? `${e.target.value}%` : '')} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '50px' }} />
+                    <span>%</span>
+                  </div>
+                </td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.ratedAmperes2 || ''} onChange={e => setField('primaryInjection.results.groundFault.ratedAmperes2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.toleranceMin2 || ''} onChange={e => setField('primaryInjection.results.groundFault.toleranceMin2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.toleranceMax2 || ''} onChange={e => setField('primaryInjection.results.groundFault.toleranceMax2', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.pole1?.a || ''} onChange={e => setField('primaryInjection.results.groundFault.pole1.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.pole2?.a || ''} onChange={e => setField('primaryInjection.results.groundFault.pole2.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
+                <td><input value={formData.primaryInjection?.results?.groundFault?.pole3?.a || ''} onChange={e => setField('primaryInjection.results.groundFault.pole3.a', e.target.value)} readOnly={!isEditing} className="report-input" style={{ textAlign: 'center', width: '100%' }} /></td>
               </tr>
             </tbody>
           </table>

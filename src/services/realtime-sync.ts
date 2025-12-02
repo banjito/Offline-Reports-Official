@@ -747,7 +747,7 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
               'medium-voltage-circuit-breaker-report': 'medium_voltage_circuit_breaker_reports',
               'medium-voltage-circuit-breaker-mts-report': 'medium_voltage_circuit_breaker_mts_reports',
               'medium-voltage-vlf-mts-report': 'medium_voltage_vlf_mts_reports',
-              'medium-voltage-cable-vlf-test-mts': 'medium_voltage_vlf_mts_reports',
+              'medium-voltage-cable-vlf-test-mts': 'medium_voltage_cable_vlf_test',
               'medium-voltage-vlf': 'medium_voltage_vlf_mts_reports',
               'medium-voltage-vlf-tan-delta': 'tandelta_reports',
               'medium-voltage-vlf-tan-delta-mts': 'tandelta_mts_reports',
@@ -776,8 +776,10 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
               'low-voltage-cable-test-20sets': 'low_voltage_cable_test_20sets',
               'low-voltage-switch-multi-device-test': 'low_voltage_switch_multi_device_reports',
               'two-small-dry-typer-xfmr-ats-report': 'two_small_dry_type_xfmr_ats_reports',
+              'small-lv-dry-type-transformer-ats25': 'small_lv_dry_type_transformer_ats25_reports',
               'switchgear-panelboard-mts-report': 'switchgear_panelboard_mts_reports',
               'liquid-filled-transformer': 'liquid_filled_transformer_reports',
+              'liquid-filled-xfmr-ats25': 'liquid_filled_xfmr_ats25_reports',
               'oil-inspection': 'oil_inspection_reports',
               'low-voltage-switch-maint-mts-report': 'low_voltage_switch_maint_mts_reports',
               '6-low-voltage-switch-maint-mts-report': 'low_voltage_switch_maint_mts_reports',
@@ -1048,6 +1050,41 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
                       reportData.deviceSettings = reportData.device_settings;
                     }
                     
+                    // Metal Enclosed Busway specific: flatten insulation_resistance.readings to insulationResistance
+                    // The web app stores readings in insulation_resistance.readings with keys like aToB, bToC, etc.
+                    if (reportData.insulation_resistance?.readings && !reportData.insulationResistance) {
+                      const readings = reportData.insulation_resistance.readings;
+                      reportData.insulationResistance = { ...readings };
+                      // Also store the test voltage and TCF at top level
+                      if (reportData.insulation_resistance.testVoltage) {
+                        reportData.testVoltage = reportData.insulation_resistance.testVoltage;
+                      }
+                      if (reportData.insulation_resistance.tcf) {
+                        reportData.tcf = reportData.insulation_resistance.tcf;
+                      }
+                    }
+                    
+                    // Also handle correctedReadings
+                    if (reportData.insulation_resistance?.correctedReadings && !reportData.correctedInsulationResistance) {
+                      reportData.correctedInsulationResistance = { ...reportData.insulation_resistance.correctedReadings };
+                    }
+                    
+                    // VLF Cable Test specific: flatten 'data' column which contains full formData
+                    // The web app stores the entire form in a 'data' JSONB column
+                    if (reportData.data && typeof reportData.data === 'object') {
+                      // Flatten all properties from data into reportData
+                      Object.keys(reportData.data).forEach(key => {
+                        if (!reportData[key]) {
+                          reportData[key] = reportData.data[key];
+                        }
+                      });
+                    }
+                    
+                    // Bus resistance mapping (Metal Enclosed Busway uses bus_resistance column)
+                    if (reportData.bus_resistance && !reportData.busResistance) {
+                      reportData.busResistance = reportData.bus_resistance;
+                    }
+                    
                     const localReport = {
                       id: report.id,
                       job_id: report.job_id,
@@ -1195,7 +1232,7 @@ const SLUG_TO_TABLE: Record<string, string> = {
   'medium-voltage-circuit-breaker-report': 'medium_voltage_circuit_breaker_reports',
   'medium-voltage-circuit-breaker-mts-report': 'medium_voltage_circuit_breaker_mts_reports',
   'medium-voltage-vlf-mts-report': 'medium_voltage_vlf_mts_reports',
-  'medium-voltage-cable-vlf-test-mts': 'medium_voltage_vlf_mts_reports',
+  'medium-voltage-cable-vlf-test-mts': 'medium_voltage_cable_vlf_test',
   'medium-voltage-vlf': 'medium_voltage_vlf_mts_reports',
   'medium-voltage-vlf-tan-delta': 'tandelta_reports',
   'medium-voltage-vlf-tan-delta-mts': 'tandelta_mts_reports',
@@ -1222,8 +1259,10 @@ const SLUG_TO_TABLE: Record<string, string> = {
   'low-voltage-cable-test-20sets': 'low_voltage_cable_test_12sets', // Uses same table
   'low-voltage-switch-multi-device-test': 'low_voltage_switch_multi_device_reports',
   'two-small-dry-typer-xfmr-ats-report': 'two_small_dry_type_xfmr_ats_reports',
+  'small-lv-dry-type-transformer-ats25': 'small_lv_dry_type_transformer_ats25_reports',
   'switchgear-panelboard-mts-report': 'switchgear_panelboard_mts_reports',
   'liquid-filled-transformer': 'liquid_filled_transformer_reports',
+  'liquid-filled-xfmr-ats25': 'liquid_filled_xfmr_ats25_reports',
   'oil-inspection': 'liquid_filled_transformer_reports',
   '6-low-voltage-switch-maint-mts-report': 'low_voltage_switch_maint_mts_reports',
   'grounding-fall-of-potential-slope-method-test': 'grounding_fall_of_potential_slope_method_test_reports',
@@ -1310,6 +1349,7 @@ export async function syncUpReports(): Promise<SyncUpResult> {
           'medium_voltage_vlf_mts_reports',
           'tandelta_reports',
           'tandelta_mts_reports',
+          'medium_voltage_cable_vlf_test',
         ];
         
         if (SIMPLE_TABLES.includes(tableName)) {

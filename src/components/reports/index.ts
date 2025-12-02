@@ -24,6 +24,22 @@ export { default as PotentialTransformerReport } from './PotentialTransformerRep
 export { default as VoltagePotentialTransformerMTSReport } from './VoltagePotentialTransformerMTSReport';
 export { default as LiquidFilledTransformerReport } from './LiquidFilledTransformerReport';
 export { default as MediumVoltageSwitchMTSReport } from './MediumVoltageSwitchMTSReport';
+export { default as MediumVoltageMotorStarterMTSReport } from './MediumVoltageMotorStarterMTSReport';
+export { default as MetalEnclosedBuswayReport } from './MetalEnclosedBuswayReport';
+export { default as MediumVoltageVLFReport } from './MediumVoltageVLFReport';
+// New VLF Report Components
+export { default as TanDeltaChartReport } from './TanDeltaChartReport';
+export { default as TanDeltaChartMTSReport } from './TanDeltaChartMTSReport';
+export { default as MediumVoltageVLFATSReport } from './MediumVoltageVLFATSReport';
+export { default as MediumVoltageVLFMTSReportNew } from './MediumVoltageVLFMTSReportNew';
+export { default as MediumVoltageCableVLFTestReport } from './MediumVoltageCableVLFTestReport';
+// ATS 25 Reports
+export { default as LiquidFilledXfmrATS25Report } from './LiquidFilledXfmrATS25Report';
+export { default as SmallLVDryTypeTransformerATS25Report } from './SmallLVDryTypeTransformerATS25Report';
+export { default as SwitchgearSwitchboardATS25Report } from './SwitchgearSwitchboardATS25Report';
+export { default as PanelboardAssembliesATS25Report } from './PanelboardAssembliesATS25Report';
+export { default as SwitchgearPanelboardMTSReport } from './SwitchgearPanelboardMTSReport';
+export { default as TwoSmallDryTypeXfmrATSReport } from './TwoSmallDryTypeXfmrATSReport';
 
 // Report type to component mapping
 import LowVoltageSwitchMultiDeviceReport from './LowVoltageSwitchMultiDeviceReport';
@@ -41,6 +57,17 @@ import PotentialTransformerReport from './PotentialTransformerReport';
 import VoltagePotentialTransformerMTSReport from './VoltagePotentialTransformerMTSReport';
 import LiquidFilledTransformerReport from './LiquidFilledTransformerReport';
 import MediumVoltageSwitchMTSReport from './MediumVoltageSwitchMTSReport';
+import MediumVoltageMotorStarterMTSReport from './MediumVoltageMotorStarterMTSReport';
+import MetalEnclosedBuswayReport from './MetalEnclosedBuswayReport';
+import MediumVoltageVLFReport from './MediumVoltageVLFReport';
+// New VLF Report Components
+import TanDeltaChartReport from './TanDeltaChartReport';
+import TanDeltaChartMTSReport from './TanDeltaChartMTSReport';
+import MediumVoltageVLFATSReport from './MediumVoltageVLFATSReport';
+import MediumVoltageVLFMTSReportNew from './MediumVoltageVLFMTSReportNew';
+import MediumVoltageCableVLFTestReport from './MediumVoltageCableVLFTestReport';
+import SwitchgearPanelboardMTSReport from './SwitchgearPanelboardMTSReport';
+import TwoSmallDryTypeXfmrATSReport from './TwoSmallDryTypeXfmrATSReport';
 
 export const REPORT_COMPONENTS: { [key: string]: React.ComponentType<any> } = {
   // Low Voltage Switch Reports
@@ -55,7 +82,7 @@ export const REPORT_COMPONENTS: { [key: string]: React.ComponentType<any> } = {
   // Switchgear Reports
   'switchgear-report': SwitchgearReport,
   'switchgear-switchboard-assemblies-ats25': SwitchgearReport,
-  'switchgear-panelboard-mts-report': SwitchgearReport,
+  'switchgear-panelboard-mts-report': SwitchgearPanelboardMTSReport,
   
   // Dry Type Transformer Reports
   'dry-type-transformer': DryTypeTransformerReport,
@@ -63,7 +90,7 @@ export const REPORT_COMPONENTS: { [key: string]: React.ComponentType<any> } = {
   'large-dry-type-transformer': DryTypeTransformerReport,
   'large-dry-type-transformer-mts-report': DryTypeTransformerReport,
   'large-dry-type-xfmr-mts-report': DryTypeTransformerReport,
-  'two-small-dry-typer-xfmr-ats-report': DryTypeTransformerReport,
+  'two-small-dry-typer-xfmr-ats-report': TwoSmallDryTypeXfmrATSReport,
   'two-small-dry-typer-xfmr-mts-report': DryTypeTransformerReport,
   
   // Liquid Filled Transformer Reports
@@ -113,20 +140,24 @@ export const REPORT_COMPONENTS: { [key: string]: React.ComponentType<any> } = {
   'potential-transformer-ats-report': PotentialTransformerReport,
   '13-voltage-potential-transformer-test-mts-report': VoltagePotentialTransformerMTSReport,
   
-  // Additional Report Types (using closest matching renderer)
-  'medium-voltage-vlf-tan-delta': LowVoltageCableReport,
-  'medium-voltage-vlf': LowVoltageCableReport,
-  'medium-voltage-cable-vlf-test': LowVoltageCableReport,
-  'medium-voltage-vlf-tan-delta-mts': LowVoltageCableReport,
-  'medium-voltage-vlf-mts-report': LowVoltageCableReport,
-  'medium-voltage-cable-vlf-test-mts': LowVoltageCableReport,
-  'electrical-tan-delta-test-mts-form': LowVoltageCableReport,
+  // Medium Voltage VLF Reports - Tan Delta (Chart-based)
+  'medium-voltage-vlf-tan-delta': TanDeltaChartReport,
+  'medium-voltage-vlf-tan-delta-mts': TanDeltaChartMTSReport,
+  'electrical-tan-delta-test-mts-form': TanDeltaChartMTSReport,
   
-  // Metal Enclosed Busway (using Switchgear as similar structure)
-  'metal-enclosed-busway': SwitchgearReport,
+  // Medium Voltage VLF Reports - Full VLF Test (no Tan Delta chart)
+  'medium-voltage-vlf': MediumVoltageVLFATSReport,
+  'medium-voltage-vlf-mts-report': MediumVoltageVLFMTSReportNew,
   
-  // Motor Starter (using MV Switch as similar structure)
-  '23-medium-voltage-motor-starter-mts-report': MediumVoltageSwitchReport,
+  // Medium Voltage VLF Reports - Combined VLF + Tan Delta
+  'medium-voltage-cable-vlf-test': MediumVoltageCableVLFTestReport,
+  'medium-voltage-cable-vlf-test-mts': MediumVoltageCableVLFTestReport,
+  
+  // Metal Enclosed Busway
+  'metal-enclosed-busway': MetalEnclosedBuswayReport,
+  
+  // Motor Starter
+  '23-medium-voltage-motor-starter-mts-report': MediumVoltageMotorStarterMTSReport,
   
   // Relay Test (using MV Circuit Breaker as similar structure)
   'relay-test-report': MediumVoltageCircuitBreakerReport,

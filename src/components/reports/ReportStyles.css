@@ -7,6 +7,174 @@
   background: #f9fafb;
 }
 
+/* Print Header */
+.print-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.print-logo {
+  height: 40px;
+  width: auto;
+}
+
+.print-title {
+  flex: 1;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.print-title h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+
+.print-title .neta-ref {
+  font-size: 0.875rem;
+  color: #1a4e7c;
+  font-weight: 600;
+  margin: 0;
+}
+
+.status-badge {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.status-badge.status-pass {
+  background-color: #22c55e;
+  color: white;
+  border: 2px solid #16a34a;
+}
+
+.status-badge.status-fail {
+  background-color: #ef4444;
+  color: white;
+  border: 2px solid #dc2626;
+}
+
+.status-pass-text {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.status-fail-text {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* Data Tables */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.data-table th,
+.data-table td {
+  border: 1px solid #d1d5db;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.data-table th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+  color: #374151;
+  text-align: center;
+}
+
+.data-table .label-cell {
+  background-color: #f9fafb;
+  font-weight: 500;
+  color: #374151;
+  width: 150px;
+  white-space: nowrap;
+}
+
+.table-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  background: white;
+}
+
+.table-input:focus {
+  outline: none;
+  border-color: #f26722;
+  box-shadow: 0 0 0 2px rgba(242, 103, 34, 0.1);
+}
+
+.table-input[readonly] {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+  cursor: default;
+}
+
+.table-input.formula-field {
+  background-color: #fef3c7;
+  border-color: #fbbf24;
+  color: #92400e;
+}
+
+/* Comments Textarea */
+.comments-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  resize: vertical;
+  min-height: 120px;
+  font-family: inherit;
+}
+
+.comments-textarea:focus {
+  outline: none;
+  border-color: #f26722;
+  box-shadow: 0 0 0 2px rgba(242, 103, 34, 0.1);
+}
+
+.comments-textarea[readonly] {
+  background-color: #f9fafb;
+}
+
+/* Chart Container */
+.chart-container {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+/* Edit Data Button */
+.edit-data-btn {
+  padding: 6px 12px;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.edit-data-btn:hover {
+  background-color: #1d4ed8;
+}
+
 /* Header Bar */
 .report-header-bar {
   display: flex;
