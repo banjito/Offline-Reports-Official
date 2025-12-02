@@ -1267,6 +1267,13 @@ const SLUG_TO_TABLE: Record<string, string> = {
   '6-low-voltage-switch-maint-mts-report': 'low_voltage_switch_maint_mts_reports',
   'grounding-fall-of-potential-slope-method-test': 'grounding_fall_of_potential_slope_method_test_reports',
   'grounding-system-master': 'grounding_system_master_reports',
+  // Additional LV Cable mappings
+  '3-low-voltage-cable-ats': 'low_voltage_cable_test_12sets',
+  '3-low-voltage-cable-mts': 'low_voltage_cable_test_3sets',
+  // Oil Analysis
+  'oil-analysis': 'oil_analysis_reports',
+  // Relay Test
+  'relay-test-report': 'relay_test_reports',
 };
 
 /**
@@ -1336,9 +1343,11 @@ export async function syncUpReports(): Promise<SyncUpResult> {
         };
         
         // Tables that use report_info + rows structure (simple tables)
+        // These tables store all form data in the report_info JSONB column
         const SIMPLE_TABLES = [
           'grounding_system_master_reports',
           'grounding_fall_of_potential_slope_method_test_reports',
+          'low_voltage_switch_maint_mts_reports',
         ];
         
         // Tables that use report_data JSONB column
@@ -1350,6 +1359,7 @@ export async function syncUpReports(): Promise<SyncUpResult> {
           'tandelta_reports',
           'tandelta_mts_reports',
           'medium_voltage_cable_vlf_test',
+          'liquid_xfmr_visual_mts_reports',
         ];
         
         if (SIMPLE_TABLES.includes(tableName)) {

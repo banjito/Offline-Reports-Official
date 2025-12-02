@@ -38,10 +38,16 @@ import {
 } from './reports';
 import LiquidFilledXfmrATS25Report from './reports/LiquidFilledXfmrATS25Report';
 import SmallLVDryTypeTransformerATS25Report from './reports/SmallLVDryTypeTransformerATS25Report';
+import LargeDryTypeTransformerMTSReport from './reports/LargeDryTypeTransformerMTSReport';
+import LiquidXfmrVisualMTSReport from './reports/LiquidXfmrVisualMTSReport';
 import SwitchgearSwitchboardATS25Report from './reports/SwitchgearSwitchboardATS25Report';
 import PanelboardAssembliesATS25Report from './reports/PanelboardAssembliesATS25Report';
 import SwitchgearPanelboardMTSReport from './reports/SwitchgearPanelboardMTSReport';
 import TwoSmallDryTypeXfmrATSReport from './reports/TwoSmallDryTypeXfmrATSReport';
+import TwoSmallDryTypeXfmrMTSReport from './reports/TwoSmallDryTypeXfmrMTSReport';
+import OilInspectionReport from './reports/OilInspectionReport';
+import LowVoltageSwitchMaintMTSReport from './reports/LowVoltageSwitchMaintMTSReport';
+import LowVoltagePanelboardSmallBreakerReport from './reports/LowVoltagePanelboardSmallBreakerReport';
 
 interface ReportViewerProps {
   jobId?: string;
@@ -120,9 +126,17 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
       // Low Voltage Switch Reports
       case 'low-voltage-switch-multi-device-test':
       case 'low-voltage-switch-report':
-      case '6-low-voltage-switch-maint-mts-report':
         return (
           <LowVoltageSwitchMultiDeviceReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+
+      case '6-low-voltage-switch-maint-mts-report':
+        return (
+          <LowVoltageSwitchMaintMTSReport
             job={job}
             reportData={reportData}
             onSave={handleSave}
@@ -163,12 +177,28 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
       case 'dry-type-transformer':
       case 'large-dry-type-transformer-report':
       case 'large-dry-type-transformer':
-      case 'large-dry-type-transformer-mts-report':
-      case 'large-dry-type-xfmr-mts-report':
-      case 'two-small-dry-typer-xfmr-mts-report':
       case 'small-lv-dry-type-transformer-ats25':
         return (
           <SmallLVDryTypeTransformerATS25Report
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+
+      case 'large-dry-type-transformer-mts-report':
+      case 'large-dry-type-xfmr-mts-report':
+        return (
+          <LargeDryTypeTransformerMTSReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+      
+      case 'two-small-dry-typer-xfmr-mts-report':
+        return (
+          <TwoSmallDryTypeXfmrMTSReport
             job={job}
             reportData={reportData}
             onSave={handleSave}
@@ -186,14 +216,30 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
       
       // Liquid Filled Transformer Reports
       case 'liquid-filled-transformer':
-      case 'oil-inspection':
-      case 'liquid-xfmr-visual-mts-report':
         return (
           <LiquidFilledTransformerReport
             job={job}
             reportData={reportData}
             onSave={handleSave}
             variant={reportType.includes('mts') ? 'mts' : 'ats'}
+          />
+        );
+
+      case 'oil-inspection':
+        return (
+          <OilInspectionReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
+          />
+        );
+
+      case 'liquid-xfmr-visual-mts-report':
+        return (
+          <LiquidXfmrVisualMTSReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
           />
         );
       
@@ -216,13 +262,22 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
       case 'low-voltage-circuit-breaker-thermal-magnetic-ats-report':
       case 'low-voltage-circuit-breaker-electronic-trip-mts-report':
       case 'low-voltage-circuit-breaker-thermal-magnetic-mts-report':
-      case 'low-voltage-panelboard-small-breaker-report':
         return (
           <LowVoltageCircuitBreakerReport
             job={job}
             reportData={reportData}
             onSave={handleSave}
             variant={getCircuitBreakerVariant(reportType)}
+          />
+        );
+      
+      // Low Voltage Panelboard Small Breaker Report
+      case 'low-voltage-panelboard-small-breaker-report':
+        return (
+          <LowVoltagePanelboardSmallBreakerReport
+            job={job}
+            reportData={reportData}
+            onSave={handleSave}
           />
         );
       

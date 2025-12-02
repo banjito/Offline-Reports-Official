@@ -36,10 +36,16 @@ export { default as MediumVoltageCableVLFTestReport } from './MediumVoltageCable
 // ATS 25 Reports
 export { default as LiquidFilledXfmrATS25Report } from './LiquidFilledXfmrATS25Report';
 export { default as SmallLVDryTypeTransformerATS25Report } from './SmallLVDryTypeTransformerATS25Report';
+export { default as LargeDryTypeTransformerMTSReport } from './LargeDryTypeTransformerMTSReport';
+export { default as LiquidXfmrVisualMTSReport } from './LiquidXfmrVisualMTSReport';
 export { default as SwitchgearSwitchboardATS25Report } from './SwitchgearSwitchboardATS25Report';
 export { default as PanelboardAssembliesATS25Report } from './PanelboardAssembliesATS25Report';
 export { default as SwitchgearPanelboardMTSReport } from './SwitchgearPanelboardMTSReport';
 export { default as TwoSmallDryTypeXfmrATSReport } from './TwoSmallDryTypeXfmrATSReport';
+export { default as TwoSmallDryTypeXfmrMTSReport } from './TwoSmallDryTypeXfmrMTSReport';
+export { default as OilInspectionReport } from './OilInspectionReport';
+export { default as LowVoltageSwitchMaintMTSReport } from './LowVoltageSwitchMaintMTSReport';
+export { default as LowVoltagePanelboardSmallBreakerReport } from './LowVoltagePanelboardSmallBreakerReport';
 
 // Report type to component mapping
 import LowVoltageSwitchMultiDeviceReport from './LowVoltageSwitchMultiDeviceReport';
@@ -68,6 +74,8 @@ import MediumVoltageVLFMTSReportNew from './MediumVoltageVLFMTSReportNew';
 import MediumVoltageCableVLFTestReport from './MediumVoltageCableVLFTestReport';
 import SwitchgearPanelboardMTSReport from './SwitchgearPanelboardMTSReport';
 import TwoSmallDryTypeXfmrATSReport from './TwoSmallDryTypeXfmrATSReport';
+import TwoSmallDryTypeXfmrMTSReport from './TwoSmallDryTypeXfmrMTSReport';
+import LowVoltagePanelboardSmallBreakerReport from './LowVoltagePanelboardSmallBreakerReport';
 
 export const REPORT_COMPONENTS: { [key: string]: React.ComponentType<any> } = {
   // Low Voltage Switch Reports
@@ -91,7 +99,7 @@ export const REPORT_COMPONENTS: { [key: string]: React.ComponentType<any> } = {
   'large-dry-type-transformer-mts-report': DryTypeTransformerReport,
   'large-dry-type-xfmr-mts-report': DryTypeTransformerReport,
   'two-small-dry-typer-xfmr-ats-report': TwoSmallDryTypeXfmrATSReport,
-  'two-small-dry-typer-xfmr-mts-report': DryTypeTransformerReport,
+  'two-small-dry-typer-xfmr-mts-report': TwoSmallDryTypeXfmrMTSReport,
   
   // Liquid Filled Transformer Reports
   'liquid-filled-transformer': LiquidFilledTransformerReport,
@@ -104,7 +112,9 @@ export const REPORT_COMPONENTS: { [key: string]: React.ComponentType<any> } = {
   'low-voltage-circuit-breaker-thermal-magnetic-ats-report': LowVoltageCircuitBreakerReport,
   'low-voltage-circuit-breaker-electronic-trip-mts-report': LowVoltageCircuitBreakerReport,
   'low-voltage-circuit-breaker-thermal-magnetic-mts-report': LowVoltageCircuitBreakerReport,
-  'low-voltage-panelboard-small-breaker-report': LowVoltageCircuitBreakerReport,
+  
+  // Low Voltage Panelboard Small Breaker Report (dedicated component)
+  'low-voltage-panelboard-small-breaker-report': LowVoltagePanelboardSmallBreakerReport,
   
   // Medium Voltage Circuit Breaker Reports
   'medium-voltage-circuit-breaker-report': MediumVoltageCircuitBreakerReport,
