@@ -194,7 +194,8 @@ const PanelboardAssembliesATS25Report: React.FC<PanelboardAssembliesATS25ReportP
   useEffect(() => {
     const tcf = getTCF(formData.temperature.celsius);
     setFormData(prev => {
-      const corrected = prev.insulationMeasured.map(row => {
+      const rows = Array.isArray(prev.insulationMeasured) ? prev.insulationMeasured : initialFormData.insulationMeasured;
+      const corrected = rows.map(row => {
         const correctedRow: InsulationRowSimple = { section: row.section, p1: '', p2: '', p3: '' };
         (['p1', 'p2', 'p3'] as const).forEach(key => {
           if (row[key]) correctedRow[key] = (parseFloat(row[key]) * tcf).toFixed(2);
@@ -312,12 +313,62 @@ const PanelboardAssembliesATS25Report: React.FC<PanelboardAssembliesATS25ReportP
     return allPass ? 'PASS' : 'FAIL';
   };
 
+  const handleSaveReport = () => {
+    if (onSave) {
+      const savePayload = {
+        ...formData,
+        report_info: {
+          customer: formData.customerName,
+          address: formData.customerLocation,
+          jobNumber: formData.jobNumber,
+          identifier: formData.identifier,
+          technicians: formData.technicians,
+          date: formData.date,
+          substation: formData.substation,
+          eqptLocation: formData.eqptLocation,
+          temperature: formData.temperature,
+          status: formData.status
+        },
+        nameplate_data: formData.nameplate,
+        visual_inspection_items: formData.visualInspectionItems,
+        contact_resistance: {
+          tests: formData.contactResistance,
+          unit: formData.contactUnit,
+          evaluation: formData.contactEvaluation,
+          torqueVerification: formData.torqueVerificationUsingLROhm
+        },
+        insulation_resistance: {
+          tests: formData.insulationMeasured,
+          correctedTests: formData.tempCorrected,
+          unit: formData.insulationUnit,
+          testVoltage: formData.insulationTestVoltage,
+          criteriaValue: formData.criteriaValue,
+          criteriaUnits: formData.criteriaUnits
+        },
+        test_equipment_used: formData.testEquipment,
+        comments: formData.comments
+      };
+      onSave(savePayload);
+      console.log('📝 Report saved:', savePayload);
+    }
+  };
+
   if (loading) {
     return <div className="report-container"><p>Loading report...</p></div>;
   }
 
   return (
     <div className="report-container">
+      {/* Save Button Bar */}
+      {isEditing && onSave && (
+        <div className="report-action-bar">
+          <button onClick={handleSaveReport} className="btn-save-report">
+            💾 Save Report
+          </button>
+          <span className="save-hint">Click to save changes locally. Use "Sync to Database" in app header to upload.</span>
+        </div>
+      )}
+
       {/* Print Header */}
       <div className="print-header">
         <img 

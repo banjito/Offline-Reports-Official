@@ -203,6 +203,46 @@ export const REPORT_TEMPLATES: Record<string, Partial<ReportTemplateData>> = {
         }
     },
 
+    'small-lv-dry-type-transformer-ats25': {
+        visual_mechanical: { items: TRANSFORMER_VISUAL_ITEMS },
+        insulation_resistance: {
+            rows: [
+                { test: 'H1-H2 to X1-X2', reading: '', corrected: '' },
+                { test: 'H1-H2 to GND', reading: '', corrected: '' },
+                { test: 'X1-X2 to GND', reading: '', corrected: '' }
+            ],
+            insulationTemperature: '',
+            testVoltage: '1000V',
+            duration: '1 min.',
+            unit: 'MΩ',
+            criteriaValue: '50',
+            criteriaUnits: 'MΩ',
+            dielectricAbsorptionRatio: ''
+        },
+        turns_ratio: {
+            tapUnderTest: '',
+            rows: [
+                { tap: 'Tap 1', primaryVoltage: '', secondaryVoltage: '', ratio: '', deviation: '' },
+                { tap: 'Tap 2', primaryVoltage: '', secondaryVoltage: '', ratio: '', deviation: '' },
+                { tap: 'Tap 3', primaryVoltage: '', secondaryVoltage: '', ratio: '', deviation: '' }
+            ]
+        }
+    },
+
+    'liquid-filled-xfmr-ats25': {
+        visual_mechanical: { items: TRANSFORMER_VISUAL_ITEMS },
+        insulation_resistance: {
+            rows: [
+                { test: 'H to L+G', halfMinute: '', oneMinute: '', tenMinute: '', correctedOneMin: '', correctedTenMin: '' },
+                { test: 'L to H+G', halfMinute: '', oneMinute: '', tenMinute: '', correctedOneMin: '', correctedTenMin: '' },
+                { test: 'H+L to G', halfMinute: '', oneMinute: '', tenMinute: '', correctedOneMin: '', correctedTenMin: '' }
+            ],
+            testVoltage: '5000V',
+            polarizationIndex: '',
+            dielectricAbsorptionRatio: ''
+        }
+    },
+
     'switchgear-report': {
         visual_mechanical: { items: SWITCHGEAR_VISUAL_ITEMS },
         insulation_resistance: {
@@ -387,6 +427,52 @@ export const REPORT_TEMPLATES: Record<string, Partial<ReportTemplateData>> = {
         ratio_tests: {
             tests: [{ primary: '', secondary: '', ratio: '' }]
         }
+    },
+
+    'potential-transformer-ats-report': {
+        device_data: {
+            ptType: '',
+            ratedPrimaryVoltage: '',
+            ratedSecondaryVoltage: '',
+            burdenVA: '',
+            thermalRating: '',
+            accuracyClass: '',
+            model: '',
+            style: '',
+            serial: '',
+            year: ''
+        },
+        visual_inspection: [
+            { id: '7.10.A.1', description: 'Inspect for physical damage', result: 'Select One' },
+            { id: '7.10.A.2', description: 'Verify nameplate data', result: 'Select One' },
+            { id: '7.10.A.3', description: 'Inspect connections and terminals', result: 'Select One' },
+            { id: '7.10.A.4', description: 'Check grounding', result: 'Select One' }
+        ],
+        fuse_data: {
+            manufacturer: '',
+            model: '',
+            ratedVoltage: '',
+            ratedCurrent: ''
+        },
+        fuse_resistance: {
+            resistance: ''
+        },
+        insulation_resistance: {
+            primaryToSecondary: '',
+            primaryToGround: '',
+            secondaryToGround: ''
+        },
+        insulation_corrected: {
+            primaryToSecondary: '',
+            primaryToGround: '',
+            secondaryToGround: ''
+        },
+        turns_ratio: {
+            rows: [
+                { tap: 'Primary', designRatio: '', measuredRatio: '', deviation: '' }
+            ]
+        },
+        equipment_used: []
     },
 
     // ==== MOTOR STARTERS & ATS ====

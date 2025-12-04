@@ -139,11 +139,12 @@ export function CurrentTransformerReport({ job, reportData, onSave, variant = 'a
   }, [formData.temperature?.tcf]);
 
   const handleSave = () => {
+    const viArray = Array.isArray(formData.visualInspection) ? formData.visualInspection : [];
     const dataToSave = {
       ...formData,
       status,
       ctData,
-      visualInspection: Object.fromEntries(formData.visualInspection.map((item: any) => [item.id, item.result]))
+      visualInspection: Object.fromEntries(viArray.map((item: any) => [item.id, item.result]))
     };
     onSave(dataToSave);
     setIsEditing(false);

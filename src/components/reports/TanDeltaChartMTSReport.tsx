@@ -194,7 +194,7 @@ const TanDeltaChartMTSReport: React.FC<TanDeltaChartMTSReportProps> = ({
             </tr>
           </tbody>
         </table>
-      </div>
+          </div>
 
       {/* Test Parameters */}
       <div className="report-section">
@@ -215,9 +215,9 @@ const TanDeltaChartMTSReport: React.FC<TanDeltaChartMTSReportProps> = ({
               <td>
                 {isEditing ? (
                   <select value={formData.status} onChange={(e) => handleInputChange('status', e.target.value)} className="table-input">
-                    <option value="PASS">PASS</option>
-                    <option value="FAIL">FAIL</option>
-                  </select>
+              <option value="PASS">PASS</option>
+              <option value="FAIL">FAIL</option>
+            </select>
                 ) : (
                   <span className={formData.status === 'PASS' ? 'status-pass-text' : 'status-fail-text'}>{formData.status}</span>
                 )}
@@ -225,7 +225,7 @@ const TanDeltaChartMTSReport: React.FC<TanDeltaChartMTSReportProps> = ({
             </tr>
           </tbody>
         </table>
-      </div>
+          </div>
 
       {/* Tan Delta Test Data Table */}
       <div className="report-section">
@@ -299,21 +299,21 @@ const TanDeltaChartMTSReport: React.FC<TanDeltaChartMTSReportProps> = ({
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </div>
+        </div>
 
       {/* Test Equipment Used */}
       <div className="report-section">
         <div className="section-divider"></div>
         <h2 className="section-title">Test Equipment Used</h2>
         <table className="data-table">
-          <thead>
-            <tr>
+              <thead>
+                <tr>
               <th>Equipment</th>
               <th>Serial Number</th>
               <th>AMP ID</th>
-            </tr>
-          </thead>
-          <tbody>
+                </tr>
+              </thead>
+              <tbody>
             <tr>
               <td className="label-cell">Megohmmeter</td>
               <td><input type="text" value={formData.equipment.megohmeterSerial} onChange={(e) => handleEquipmentChange('megohmeterSerial', e.target.value)} readOnly={!isEditing} className="table-input" /></td>
@@ -323,10 +323,10 @@ const TanDeltaChartMTSReport: React.FC<TanDeltaChartMTSReportProps> = ({
               <td className="label-cell">VLF Hipot</td>
               <td><input type="text" value={formData.equipment.vlfHipotSerial} onChange={(e) => handleEquipmentChange('vlfHipotSerial', e.target.value)} readOnly={!isEditing} className="table-input" /></td>
               <td><input type="text" value={formData.equipment.vlfHipotAmpId} onChange={(e) => handleEquipmentChange('vlfHipotAmpId', e.target.value)} readOnly={!isEditing} className="table-input" /></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                  </tr>
+              </tbody>
+            </table>
+          </div>
 
       {/* Comments */}
       <div className="report-section">

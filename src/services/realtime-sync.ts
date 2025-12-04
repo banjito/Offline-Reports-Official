@@ -552,12 +552,22 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
       
       // Sync form instances (custom forms filled out for jobs) - only for in-progress jobs
       console.log(`\n📋 Syncing form instances for ${jobIds.length} in-progress jobs from Supabase...`);
+      console.log(`📡 Querying custom_form_instances...`);
       
-      const { data: allFormInstances, error: instancesError } = await supabase
-        .schema('neta_ops')
-        .from('custom_form_instances')
-        .select('*')
-        .in('job_id', jobIds);
+      let allFormInstances: any[] | null = null;
+      let instancesError: any = null;
+      
+      try {
+        const instancesResult = await Promise.race([
+          supabase.schema('neta_ops').from('custom_form_instances').select('*').in('job_id', jobIds),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('custom_form_instances query timed out')), 30000))
+        ]);
+        allFormInstances = instancesResult.data;
+        instancesError = instancesResult.error;
+      } catch (timeoutError: any) {
+        console.error('❌ custom_form_instances query timed out:', timeoutError.message);
+        instancesError = { message: 'Query timed out' };
+      }
       
       if (instancesError) {
         console.error('❌ Error fetching form instances from Supabase:', instancesError);
@@ -640,11 +650,30 @@ export async function performFullSync(userId?: string): Promise<SyncResult> {
       console.log('🗑️  Clearing old assets from local database...');
       await window.electronAPI.dbQuery('assets', 'deleteAll', {});
       
-      const { data: jobAssetLinks, error: linksError } = await supabase
+      console.log(`📡 Fetching job_assets for ${jobIds.length} jobs...`);
+      
+      // Use a timeout to prevent hanging
+      const jobAssetsPromise = supabase
         .schema('neta_ops')
         .from('job_assets')
         .select('id, job_id, asset_id, user_id, created_at')
         .in('job_id', jobIds);
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('job_assets query timed out after 30 seconds')), 30000);
+      });
+      
+      let jobAssetLinks: any[] | null = null;
+      let linksError: any = null;
+      
+      try {
+        const result = await Promise.race([jobAssetsPromise, timeoutPromise]);
+        jobAssetLinks = result.data;
+        linksError = result.error;
+      } catch (timeoutError: any) {
+        console.error('❌ job_assets query timed out:', timeoutError.message);
+        linksError = { message: 'Query timed out' };
+      }
       
       if (linksError) {
         console.error('❌ Error fetching job_assets:', linksError);
@@ -1289,8 +1318,14 @@ export async function syncUpReports(): Promise<SyncUpResult> {
     
     // Get all dirty reports from local database
     console.log('📤 Querying for dirty reports...');
-    const reportsResult = await window.electronAPI.dbQuery('reports', 'getDirty', {});
-    console.log('📤 getDirty result:', reportsResult);
+    let reportsResult;
+    try {
+      reportsResult = await window.electronAPI.dbQuery('reports', 'getDirty', {});
+      console.log('📤 getDirty result:', reportsResult);
+    } catch (dbErr: any) {
+      console.error('❌ Database error getting dirty reports:', dbErr);
+      return { success: false, errors: ['Database error: ' + dbErr.message] };
+    }
     
     if (!reportsResult.success) {
       console.error('❌ Failed to get dirty reports:', reportsResult.error);
@@ -1318,18 +1353,30 @@ export async function syncUpReports(): Promise<SyncUpResult> {
           continue;
         }
         
-        // Parse report_data
+        // Parse report_data - might be double-stringified
         let reportData: any = {};
-        if (typeof report.report_data === 'string') {
-          try {
-            reportData = JSON.parse(report.report_data);
-          } catch (e) {
-            console.error('Failed to parse report_data:', e);
-            errors.push(`Failed to parse report_data for ${report.id}`);
-            continue;
+        try {
+          let rawData = report.report_data;
+          console.log(`  📄 Raw report_data type:`, typeof rawData);
+          console.log(`  📄 Raw report_data preview:`, String(rawData).substring(0, 200));
+          
+          // Parse if string
+          if (typeof rawData === 'string') {
+            reportData = JSON.parse(rawData);
+            // Check if it got double-stringified
+            if (typeof reportData === 'string') {
+              console.log(`  ⚠️ Double-stringified, parsing again...`);
+              reportData = JSON.parse(reportData);
+            }
+          } else {
+            reportData = rawData || {};
           }
-        } else {
-          reportData = report.report_data || {};
+          
+          console.log(`  📄 Parsed reportData keys:`, Object.keys(reportData));
+        } catch (e) {
+          console.error('Failed to parse report_data:', e);
+          errors.push(`Failed to parse report_data for ${report.id}`);
+          continue;
         }
         
         // Build the payload for Supabase
@@ -1342,157 +1389,290 @@ export async function syncUpReports(): Promise<SyncUpResult> {
           updated_at: new Date().toISOString(),
         };
         
-        // Tables that use report_info + rows structure (simple tables)
-        // These tables store all form data in the report_info JSONB column
-        const SIMPLE_TABLES = [
-          'grounding_system_master_reports',
-          'grounding_fall_of_potential_slope_method_test_reports',
-          'low_voltage_switch_maint_mts_reports',
-        ];
+        // TABLE-SPECIFIC COLUMN DEFINITIONS
+        // Each table has different columns - we must only include columns that exist
+        // VERIFIED FROM WEB APP handleSave functions - BE VERY CAREFUL HERE!
+        const TABLE_COLUMNS: Record<string, string[]> = {
+          // ============ Tables that use a SINGLE report_data column ============
+          // These wrap ALL data inside a single report_data JSONB column
+          'medium_voltage_circuit_breaker_reports': ['report_data'],
+          'medium_voltage_circuit_breaker_mts_reports': ['report_data'],
+          'liquid_xfmr_visual_mts_reports': ['report_data'],
+          'two_small_dry_type_xfmr_ats_reports': ['report_data'],
+          'two_small_dry_type_xfmr_mts_reports': ['report_data'],
+          'current_transformer_test_mts_reports': ['report_data'],
+          'voltage_potential_transformer_mts_reports': ['report_data'],
+          'low_voltage_cable_test_3sets': ['report_data'],
+          'low_voltage_cable_test_12sets': ['report_data'],
+          
+          // ============ Tables that use a SINGLE data column ============
+          'medium_voltage_cable_vlf_test': ['data'],
+          'medium_voltage_vlf_mts_reports': ['data'],
+          'tandelta_reports': ['data'],
+          'tandelta_mts_reports': ['data'],
+          
+          // ============ ATS25 Tables - Use SEPARATE columns ============
+          // These have individual JSONB columns for each section
+          'small_lv_dry_type_transformer_ats25_reports': ['report_info', 'visual_mechanical', 'insulation_resistance', 'turns_ratio', 'test_equipment', 'comments'],
+          'liquid_filled_xfmr_ats25_reports': ['report_info', 'visual_mechanical', 'insulation_resistance', 'test_equipment', 'comments'],
+          'switchgear_switchboard_ats25_reports': ['report_info', 'visual_mechanical', 'insulation_resistance', 'contact_resistance', 'test_equipment', 'comments'],
+          'panelboard_assemblies_ats25_reports': ['report_info', 'visual_mechanical', 'insulation_resistance', 'contact_resistance', 'test_equipment', 'comments'],
+          'potential_transformer_ats_reports': ['report_info', 'device_data', 'visual_inspection', 'fuse_data', 'fuse_resistance', 'insulation_resistance', 'insulation_corrected', 'turns_ratio', 'equipment_used', 'comments'],
+          'current_transformer_test_ats_reports': ['report_info', 'device_data', 'visual_inspection', 'electrical_tests', 'test_equipment', 'comments'],
+          
+          // ============ MTS Tables that use report_info column ============
+          // These use report_info as the primary data column (NOT report_data)
+          'switchgear_panelboard_mts_reports': ['report_info'],
+          'large_dry_type_transformer_mts_reports': ['report_info'],
+          'oil_inspection_reports': ['report_info'],
+          'medium_voltage_motor_starter_mts_reports': ['report_info'],
+          'medium_voltage_switch_mts_reports': ['report_info'],
+          'low_voltage_switch_maint_mts_reports': ['report_info'],
+          'grounding_system_master_reports': ['report_info', 'rows'],
+          'grounding_fall_of_potential_slope_method_test_reports': ['report_info', 'rows'],
+          
+          // ============ Other Tables ============
+          'metal_enclosed_busway_reports': ['report_info', 'visual_inspection', 'insulation_resistance', 'contact_resistance', 'test_equipment', 'comments'],
+          'automatic_transfer_switch_ats_reports': ['report_info', 'visual_inspection_items', 'insulation_resistance', 'contact_resistance', 'test_equipment_used', 'comments'],
+          'low_voltage_panelboard_small_breaker_reports': ['report_info', 'visual_mechanical_inspection', 'electrical_tests', 'test_equipment', 'comments_text', 'status'],
+          
+          // ============ Low Voltage Circuit Breaker Tables ============
+          'low_voltage_circuit_breaker_electronic_trip_ats': ['report_info', 'device_data', 'visual_inspection', 'electrical_tests', 'test_equipment', 'comments'],
+          'low_voltage_circuit_breaker_electronic_trip_mts': ['report_info', 'device_data', 'visual_inspection', 'electrical_tests', 'test_equipment', 'comments'],
+          'low_voltage_circuit_breaker_thermal_magnetic_ats': ['report_info', 'device_data', 'visual_inspection', 'electrical_tests', 'test_equipment', 'comments'],
+          'low_voltage_circuit_breaker_thermal_magnetic_mts_reports': ['report_info', 'device_data', 'visual_inspection', 'electrical_tests', 'test_equipment', 'comments'],
+        };
         
-        // Tables that use report_data JSONB column
-        const REPORT_DATA_TABLES = [
-          'two_small_dry_type_xfmr_ats_reports',
-          'two_small_dry_type_xfmr_mts_reports',
-          'low_voltage_switch_multi_device_reports',
-          'medium_voltage_vlf_mts_reports',
-          'tandelta_reports',
-          'tandelta_mts_reports',
-          'medium_voltage_cable_vlf_test',
-          'liquid_xfmr_visual_mts_reports',
-        ];
+        // Get columns for this table, or use default (report_info for unknown tables)
+        const tableColumns = TABLE_COLUMNS[tableName] || ['report_info'];
+        console.log(`  📋 Table ${tableName} columns:`, tableColumns);
         
-        if (SIMPLE_TABLES.includes(tableName)) {
-          // Simple structure: report_info + rows
-          if (reportData.report_info) {
-            payload.report_info = reportData.report_info;
-          } else {
-            // Build report_info from available data
-            payload.report_info = {
-              customer: reportData.customer || reportData.jobInfo?.customer || '',
-              address: reportData.address || reportData.jobInfo?.address || '',
-              jobNumber: reportData.jobNumber || reportData.jobInfo?.jobNumber || '',
-              identifier: reportData.identifier || '',
-              status: reportData.status || 'PASS',
-              title: report.title,
-              technicians: reportData.technicians || reportData.jobInfo?.technicians || '',
-              date: reportData.date || reportData.jobInfo?.date || new Date().toISOString().split('T')[0],
-              substation: reportData.substation || reportData.jobInfo?.substation || '',
-              eqptLocation: reportData.eqptLocation || reportData.jobInfo?.eqptLocation || '',
-              temperature: reportData.temperature || reportData.jobInfo?.temperature || { fahrenheit: 68, celsius: 20, humidity: 0 },
+        // Build the payload based on table columns
+        if (tableColumns.includes('report_data')) {
+          // Tables that use a single report_data column
+          payload.report_data = reportData;
+        } else if (tableColumns.includes('data')) {
+          // Tables that use a single data column
+          payload.data = reportData;
+        } else {
+          // Tables that use report_info + optional specific columns
+          
+          // Always include report_info
+          if (tableColumns.includes('report_info')) {
+            if (reportData.report_info) {
+              payload.report_info = reportData.report_info;
+            } else {
+              // Build report_info from top-level fields
+              payload.report_info = {
+                customer: reportData.customerName || reportData.customer,
+                address: reportData.customerLocation || reportData.address,
+                jobNumber: reportData.jobNumber,
+                identifier: reportData.identifier,
+                technicians: reportData.technicians,
+                date: reportData.date,
+                substation: reportData.substation,
+                eqptLocation: reportData.eqptLocation,
+                temperature: reportData.temperature,
+                status: reportData.status,
+                nameplate: reportData.nameplate || reportData.nameplate_data
+              };
+            }
+          }
+          
+          // Visual inspection columns
+          if (tableColumns.includes('visual_mechanical')) {
+            payload.visual_mechanical = reportData.visual_mechanical || reportData.visualInspectionItems || 
+                                        reportData.visual_inspection_items || { items: reportData.visualInspection };
+          }
+          if (tableColumns.includes('visual_inspection')) {
+            payload.visual_inspection = reportData.visual_inspection || reportData.visualInspectionItems || 
+                                        reportData.visual_inspection_items || reportData.visualInspection;
+          }
+          if (tableColumns.includes('visual_inspection_items')) {
+            payload.visual_inspection_items = reportData.visual_inspection_items || reportData.visualInspectionItems || 
+                                              reportData.visualInspection;
+          }
+          if (tableColumns.includes('visual_mechanical_inspection')) {
+            payload.visual_mechanical_inspection = reportData.visual_mechanical_inspection || reportData.visualInspectionItems || 
+                                                   reportData.visual_inspection_items;
+          }
+          
+          // Insulation resistance
+          if (tableColumns.includes('insulation_resistance')) {
+            payload.insulation_resistance = reportData.insulation_resistance || reportData.insulationResistance || {
+              rows: reportData.insulationRows,
+              dielectricAbsorptionRatio: reportData.dielectricAbsorptionRatio
             };
           }
-          if (reportData.rows) {
-            payload.rows = reportData.rows;
-          }
-        } else if (REPORT_DATA_TABLES.includes(tableName)) {
-          // Use report_data JSONB column
-          payload.report_data = reportData;
-        } else {
-          // Standard structure with multiple JSONB columns
-          if (reportData.report_info) {
-            payload.report_info = reportData.report_info;
-          }
-          if (reportData.visual_inspection_items || reportData.visualInspection) {
-            payload.visual_inspection_items = reportData.visual_inspection_items || reportData.visualInspection;
-          }
-          if (reportData.test_equipment_used || reportData.testEquipment) {
-            payload.test_equipment_used = reportData.test_equipment_used || reportData.testEquipment;
-          }
-          if (reportData.insulation_resistance || reportData.insulationResistance) {
-            payload.insulation_resistance = reportData.insulation_resistance || reportData.insulationResistance;
-          }
-          if (reportData.contact_resistance || reportData.contactResistance) {
+          
+          // Contact resistance
+          if (tableColumns.includes('contact_resistance')) {
             payload.contact_resistance = reportData.contact_resistance || reportData.contactResistance;
           }
-          if (reportData.nameplate_data || reportData.nameplate) {
-            payload.nameplate_data = reportData.nameplate_data || reportData.nameplate;
+          
+          // Turns ratio
+          if (tableColumns.includes('turns_ratio')) {
+            payload.turns_ratio = reportData.turns_ratio || reportData.turnsRatio;
           }
-          if (reportData.rows) {
+          
+          // Test equipment - different column names
+          if (tableColumns.includes('test_equipment')) {
+            payload.test_equipment = reportData.test_equipment || reportData.test_equipment_used || reportData.testEquipment;
+          }
+          if (tableColumns.includes('test_equipment_used')) {
+            payload.test_equipment_used = reportData.test_equipment_used || reportData.test_equipment || reportData.testEquipment;
+          }
+          if (tableColumns.includes('equipment_used')) {
+            payload.equipment_used = reportData.equipment_used || reportData.equipment || reportData.test_equipment_used || reportData.testEquipment;
+          }
+          
+          // Device/transformer data
+          if (tableColumns.includes('device_data')) {
+            payload.device_data = reportData.device_data || reportData.ptData || reportData.ctData || reportData.deviceData;
+          }
+          if (tableColumns.includes('transformer_data')) {
+            payload.transformer_data = reportData.transformer_data || reportData.ptData || reportData.deviceData;
+          }
+          
+          // Electrical tests
+          if (tableColumns.includes('electrical_tests')) {
+            payload.electrical_tests = reportData.electrical_tests || reportData.electricalTests || {
+              insulation: reportData.insulationResistance,
+              contact: reportData.contactResistance
+            };
+          }
+          
+          // Fuse data
+          if (tableColumns.includes('fuse_data')) {
+            payload.fuse_data = reportData.fuse_data || reportData.fuseData;
+          }
+          if (tableColumns.includes('fuse_resistance')) {
+            payload.fuse_resistance = reportData.fuse_resistance || reportData.fuseResistance;
+          }
+          
+          // Insulation corrected
+          if (tableColumns.includes('insulation_corrected')) {
+            payload.insulation_corrected = reportData.insulation_corrected || reportData.insulationCorrected;
+          }
+          
+          // Rows (for grounding reports)
+          if (tableColumns.includes('rows')) {
             payload.rows = reportData.rows;
           }
           
-          // Only add comments if the table is known to have it
-          // Most tables don't have a top-level comments column
+          // Comments - different column names
+          if (tableColumns.includes('comments')) {
+            payload.comments = reportData.comments || '';
+          }
+          if (tableColumns.includes('comments_text')) {
+            payload.comments_text = reportData.comments_text || reportData.comments || '';
+          }
+          
+          // Status
+          if (tableColumns.includes('status')) {
+            payload.status = reportData.status || 'PENDING';
+          }
+        }
+        
+        // Log what we're saving to help debug
+        console.log(`  📦 Payload keys:`, Object.keys(payload));
+        console.log(`  📦 Report data keys:`, Object.keys(reportData));
+        
+        // Log actual DATA values to see if they have content
+        for (const key of Object.keys(reportData)) {
+          const val = reportData[key];
+          const valStr = JSON.stringify(val);
+          const isEmpty = !val || valStr === '{}' || valStr === '[]' || valStr === 'null';
+          console.log(`  📦 reportData.${key}: ${isEmpty ? '⚠️ EMPTY' : `✓ has data (${valStr?.length} chars)`}`);
+          if (!isEmpty && valStr?.length < 300) {
+            console.log(`     → ${valStr}`);
+          }
+        }
+        
+        // Log payload values
+        console.log(`\n  📦 PAYLOAD being built:`);
+        for (const key of Object.keys(payload)) {
+          const val = payload[key];
+          const valStr = JSON.stringify(val);
+          const isEmpty = !val || valStr === '{}' || valStr === '[]' || valStr === 'null';
+          console.log(`  📦 payload.${key}: ${isEmpty ? '⚠️ EMPTY' : `✓ has data (${valStr?.length} chars)`}`);
+          if (!isEmpty && valStr?.length < 300) {
+            console.log(`     → ${valStr}`);
+          }
         }
         
         console.log(`  📡 Upserting to ${tableName}...`);
         
-        // Check if report already exists in Supabase
-        const { data: existingReport } = await supabase
-          .schema('neta_ops')
-          .from(tableName)
-          .select('id')
-          .eq('id', report.id)
-          .single();
-        
+        // Use upsert instead of checking existence - much simpler and faster
         let result;
-        if (existingReport) {
-          // Update existing report
-          console.log(`  📝 Updating existing report...`);
-          result = await supabase
-            .schema('neta_ops')
-            .from(tableName)
-            .update(payload)
-            .eq('id', report.id)
-            .select();
-        } else {
-          // Insert new report
-          console.log(`  ➕ Creating new report...`);
-          result = await supabase
-            .schema('neta_ops')
-            .from(tableName)
-            .insert(payload)
-            .select();
+        try {
+          // Remove id and metadata - we only want to update data columns
+          const { id, job_id, user_id, created_at, updated_at: ua, ...dataPayload } = payload;
           
-          // Create asset entry for new reports
-          if (!result.error) {
-            console.log(`  📦 Creating asset entry...`);
-            const identifier = reportData.identifier || reportData.report_info?.identifier || 
-                              reportData.jobInfo?.identifier || 'Report';
-            
-            const assetData = {
-              name: `${report.title || report.report_type} - ${identifier}`,
-              file_url: `report:/jobs/${report.job_id}/${report.report_type}/${report.id}`,
-              user_id: report.submitted_by || null,
-              status: 'not started',
-              created_at: new Date().toISOString()
-            };
-            
-            const { data: assetResult, error: assetError } = await supabase
-              .schema('neta_ops')
-              .from('assets')
-              .insert(assetData)
-              .select()
-              .single();
-            
-            if (assetError) {
-              console.error(`  ⚠️ Failed to create asset:`, assetError.message);
-              errors.push(`Failed to create asset for ${report.id}: ${assetError.message}`);
-            } else if (assetResult) {
-              console.log(`  ✅ Asset created: ${assetResult.id}`);
-              assetsCreated++;
-              
-              // Link asset to job
-              const { error: linkError } = await supabase
-                .schema('neta_ops')
-                .from('job_assets')
-                .insert({
-                  job_id: report.job_id,
-                  asset_id: assetResult.id,
-                  user_id: report.submitted_by || null
-                });
-              
-              if (linkError) {
-                console.error(`  ⚠️ Failed to link asset to job:`, linkError.message);
-              } else {
-                console.log(`  🔗 Asset linked to job`);
-              }
+          // Build update payload with ONLY columns that have REAL data (not empty objects/arrays)
+          const updatePayload: any = {
+            updated_at: new Date().toISOString()
+          };
+          
+          // Helper to check if value has actual content
+          const hasContent = (val: any): boolean => {
+            if (val === undefined || val === null) return false;
+            if (typeof val === 'string') return val.trim().length > 0;
+            if (Array.isArray(val)) return val.length > 0;
+            if (typeof val === 'object') {
+              const keys = Object.keys(val);
+              if (keys.length === 0) return false;
+              // Check if any values in the object have content
+              return keys.some(k => {
+                const v = val[k];
+                return v !== undefined && v !== null && v !== '';
+              });
+            }
+            return true;
+          };
+          
+          // Only include columns that actually have meaningful data
+          for (const key of Object.keys(dataPayload)) {
+            const value = dataPayload[key];
+            if (hasContent(value)) {
+              updatePayload[key] = value;
+              console.log(`  ✓ Including ${key} (has content)`);
+            } else {
+              console.log(`  ⚠️ SKIPPING ${key} (empty/null)`);
             }
           }
+          
+          console.log(`  📦 Final update payload keys:`, Object.keys(updatePayload));
+          
+          // Check if we actually have data to send
+          if (Object.keys(updatePayload).length <= 1) { // Only has updated_at
+            console.error(`  ❌ No data columns to update! Report data might be empty.`);
+            console.error(`  ❌ Original reportData keys:`, Object.keys(reportData));
+            console.error(`  ❌ Original reportData:`, JSON.stringify(reportData, null, 2).substring(0, 1000));
+            errors.push(`No data columns for ${report.id}`);
+            continue;
+          }
+          
+          // UPDATE the existing report
+          console.log(`  📡 Sending UPDATE to ${tableName} for id ${report.id}...`);
+          result = await supabase
+            .schema('neta_ops')
+            .from(tableName)
+            .update(updatePayload)
+            .eq('id', report.id)
+            .select();
+            
+          console.log(`  📡 Result:`, result.error ? `Error: ${result.error.message}` : `Success - ${result.data?.length || 0} rows`);
+          if (result.data && result.data.length > 0) {
+            console.log(`  📡 Updated data from DB:`, JSON.stringify(result.data[0]).substring(0, 1000));
+          }
+        } catch (err: any) {
+          console.error(`  ❌ Sync exception:`, err.message);
+          errors.push(`Sync failed for ${report.id}: ${err.message}`);
+          continue;
         }
         
-        if (result.error) {
+        if (result?.error) {
           console.error(`  ❌ Failed to upsert report:`, result.error.message);
           errors.push(`Failed to upload ${report.id}: ${result.error.message}`);
           continue;

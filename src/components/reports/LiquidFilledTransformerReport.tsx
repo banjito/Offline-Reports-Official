@@ -164,10 +164,11 @@ export function LiquidFilledTransformerReport({ job, reportData, onSave, variant
   }, [formData.temperature?.tcf, formData.insulationResistance.primaryHToLPlusG, formData.insulationResistance.secondaryXToHPlusG, formData.insulationResistance.primaryHToG, formData.insulationResistance.secondaryXToG, formData.insulationResistance.oneMinH, formData.insulationResistance.tenMinH, formData.insulationResistance.oneMinX, formData.insulationResistance.tenMinX]);
 
   const handleSave = () => {
+    const viArray = Array.isArray(formData.visualInspection) ? formData.visualInspection : [];
     const dataToSave = {
       ...formData,
       status,
-      visualInspection: Object.fromEntries(formData.visualInspection.map((item: any) => [item.id, item.result]))
+      visualInspection: Object.fromEntries(viArray.map((item: any) => [item.id, item.result]))
     };
     onSave(dataToSave);
     setIsEditing(false);

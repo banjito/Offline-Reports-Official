@@ -232,38 +232,44 @@ const SmallLVDryTypeTransformerATS25Report: React.FC<SmallLVDryTypeTransformerAT
   // Auto-calculate TCF and corrected values
   useEffect(() => {
     const tcf = getTCF(formData.temperature.celsius);
-    setFormData(prev => ({
-      ...prev,
-      temperature: { ...prev.temperature, tcf },
-      insulationRows: prev.insulationRows.map(row => ({
-        ...row,
-        corrected05Min: row.measured05Min ? (parseFloat(row.measured05Min) * tcf).toFixed(2) : '',
-        corrected1Min: row.measured1Min ? (parseFloat(row.measured1Min) * tcf).toFixed(2) : ''
-      }))
-    }));
+    setFormData(prev => {
+      const rows = Array.isArray(prev.insulationRows) ? prev.insulationRows : initialFormData.insulationRows;
+      return {
+        ...prev,
+        temperature: { ...prev.temperature, tcf },
+        insulationRows: rows.map(row => ({
+          ...row,
+          corrected05Min: row.measured05Min ? (parseFloat(row.measured05Min) * tcf).toFixed(2) : '',
+          corrected1Min: row.measured1Min ? (parseFloat(row.measured1Min) * tcf).toFixed(2) : ''
+        }))
+      };
+    });
   }, [formData.temperature.celsius]);
 
   // Auto-calculate turns ratio
   useEffect(() => {
-    const primary = parseFloat(formData.turnsRatio.primaryWindingVoltage) || 0;
-    const secondary = parseFloat(formData.turnsRatio.secondaryWindingVoltage) || 0;
+    const primary = parseFloat(formData.turnsRatio?.primaryWindingVoltage) || 0;
+    const secondary = parseFloat(formData.turnsRatio?.secondaryWindingVoltage) || 0;
     const calculatedRatio = secondary > 0 ? (primary / secondary).toFixed(4) : '';
     
-    setFormData(prev => ({
-      ...prev,
-      turnsRatio: {
-        ...prev.turnsRatio,
-        calculatedRatio,
-        rows: prev.turnsRatio.rows.map(row => {
-          const measured = parseFloat(row.measuredRatio) || 0;
-          const calc = parseFloat(calculatedRatio) || 0;
-          const deviation = calc > 0 ? (((measured - calc) / calc) * 100).toFixed(2) : '';
-          const result = deviation && Math.abs(parseFloat(deviation)) <= 0.5 ? 'Pass' : (deviation ? 'Fail' : '');
-          return { ...row, percentDeviation: deviation, result: result as 'Pass' | 'Fail' | '' };
-        })
-      }
-    }));
-  }, [formData.turnsRatio.primaryWindingVoltage, formData.turnsRatio.secondaryWindingVoltage, formData.turnsRatio.rows.map(r => r.measuredRatio).join(',')]);
+    setFormData(prev => {
+      const rows = Array.isArray(prev.turnsRatio?.rows) ? prev.turnsRatio.rows : initialFormData.turnsRatio.rows;
+      return {
+        ...prev,
+        turnsRatio: {
+          ...prev.turnsRatio,
+          calculatedRatio,
+          rows: rows.map(row => {
+            const measured = parseFloat(row.measuredRatio) || 0;
+            const calc = parseFloat(calculatedRatio) || 0;
+            const deviation = calc > 0 ? (((measured - calc) / calc) * 100).toFixed(2) : '';
+            const result = deviation && Math.abs(parseFloat(deviation)) <= 0.5 ? 'Pass' : (deviation ? 'Fail' : '');
+            return { ...row, percentDeviation: deviation, result: result as 'Pass' | 'Fail' | '' };
+          })
+        }
+      };
+    });
+  }, [formData.turnsRatio?.primaryWindingVoltage, formData.turnsRatio?.secondaryWindingVoltage, (formData.turnsRatio?.rows || []).map(r => r.measuredRatio).join(',')]);
 
   const loadFromProps = (data: any) => {
     const reportInfo = data.report_info || {};
@@ -273,19 +279,22 @@ const SmallLVDryTypeTransformerATS25Report: React.FC<SmallLVDryTypeTransformerAT
     const tr = data.turns_ratio || data.turnsRatio || {};
     const te = data.test_equipment || data.testEquipment || reportInfo.testEquipment || {};
 
+    console.log('📂 Loading SmallLVDryType data:', { reportInfo, vm, ir, tr, te, raw: data });
+
     setFormData(prev => ({
       ...prev,
       customerName: reportInfo.customer || data.customerName || prev.customerName,
       customerLocation: reportInfo.address || data.customerLocation || prev.customerLocation,
       userName: reportInfo.userName || data.userName || prev.userName,
       date: reportInfo.date || data.date || prev.date,
+      jobNumber: reportInfo.jobNumber || data.jobNumber || prev.jobNumber,
       technicians: reportInfo.technicians || data.technicians || prev.technicians,
       identifier: reportInfo.identifier || data.identifier || prev.identifier,
       substation: reportInfo.substation || data.substation || prev.substation,
       eqptLocation: reportInfo.eqptLocation || data.eqptLocation || prev.eqptLocation,
       temperature: reportInfo.temperature || data.temperature || prev.temperature,
       status: reportInfo.status || data.status || prev.status,
-      nameplate: reportInfo.nameplate || data.nameplate || prev.nameplate,
+      nameplate: reportInfo.nameplate || data.nameplate || data.nameplate_data || prev.nameplate,
       visualInspectionItems: vmItems.length ? vmItems : prev.visualInspectionItems,
       insulationTemperature: ir.insulationTemperature || data.insulationTemperature || prev.insulationTemperature,
       insulationTestVoltage: ir.testVoltage || data.insulationTestVoltage || prev.insulationTestVoltage,
@@ -351,12 +360,60 @@ const SmallLVDryTypeTransformerATS25Report: React.FC<SmallLVDryTypeTransformerAT
     }));
   };
 
+  const handleSaveReport = () => {
+    if (onSave) {
+      // Build payload EXACTLY matching web app structure for small_lv_dry_type_transformer_ats25_reports
+      const savePayload = {
+        report_info: {
+          customer: formData.customerName,
+          address: formData.customerLocation,
+          userName: formData.userName,
+          date: formData.date,
+          identifier: formData.identifier,
+          jobNumber: formData.jobNumber,
+          technicians: formData.technicians,
+          substation: formData.substation,
+          eqptLocation: formData.eqptLocation,
+          temperature: formData.temperature,
+          status: formData.status,
+          nameplate: formData.nameplate  // Nameplate goes INSIDE report_info
+        },
+        visual_mechanical: { items: formData.visualInspectionItems },
+        insulation_resistance: {
+          insulationTemperature: formData.insulationTemperature,
+          testVoltage: formData.insulationTestVoltage,
+          duration: formData.insulationDuration,
+          unit: formData.insulationUnit,
+          rows: formData.insulationRows,
+          criteriaValue: formData.insulationCriteriaValue,
+          criteriaUnits: formData.insulationCriteriaUnits,
+          dielectricAbsorptionRatio: formData.dielectricAbsorptionRatio
+        },
+        turns_ratio: formData.turnsRatio,
+        test_equipment: formData.testEquipment,
+        comments: formData.comments
+      };
+      onSave(savePayload);
+      console.log('📝 Report saved:', savePayload);
+    }
+  };
+
   if (loading) {
     return <div className="report-container"><p>Loading report...</p></div>;
   }
 
   return (
     <div className="report-container">
+      {/* Save Button Bar */}
+      {isEditing && onSave && (
+        <div className="report-action-bar">
+          <button onClick={handleSaveReport} className="btn-save-report">
+            💾 Save Report
+          </button>
+          <span className="save-hint">Click to save changes locally. Use "Sync to Database" in app header to upload.</span>
+        </div>
+      )}
+
       {/* Print Header */}
       <div className="print-header">
         <img 

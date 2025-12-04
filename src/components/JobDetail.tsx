@@ -118,6 +118,42 @@ const REPORT_TEMPLATES: ReportTemplate[] = [
     template_type: 'ATS'
   },
   {
+    id: 'small-lv-dry-type-transformer-ats25',
+    name: '7.2.1.1 Small Low Voltage Dry Type Transformer Test Sheet ATS 25',
+    route: 'small-lv-dry-type-transformer-ats25',
+    template_type: 'ATS'
+  },
+  {
+    id: 'liquid-filled-xfmr-ats25',
+    name: '7.2.2 Liquid Filled Xfmr. Visual, Mechanical, Insulation Resistance Test ATS 25',
+    route: 'liquid-filled-xfmr-ats25',
+    template_type: 'ATS'
+  },
+  {
+    id: 'oil-inspection',
+    name: '2-Oil Xfmr. Inspection and Test ATS 21',
+    route: 'oil-inspection',
+    template_type: 'ATS'
+  },
+  {
+    id: 'oil-analysis-report',
+    name: 'Oil Analysis Report',
+    route: 'oil-analysis-report',
+    template_type: 'ATS'
+  },
+  {
+    id: 'cable-hipot-report',
+    name: 'Cable Hi-Pot Test Report',
+    route: 'cable-hipot-report',
+    template_type: 'ATS'
+  },
+  {
+    id: 'relay-test-report',
+    name: 'Relay Test Report',
+    route: 'relay-test-report',
+    template_type: 'ATS'
+  },
+  {
     id: 'low-voltage-cable-test-12sets',
     name: '3-Low Voltage Cable Test ATS',
     route: 'low-voltage-cable-test-12sets',

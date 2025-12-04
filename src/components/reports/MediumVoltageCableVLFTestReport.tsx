@@ -417,7 +417,7 @@ const MediumVoltageCableVLFTestReport: React.FC<MediumVoltageCableVLFTestReportP
 
   if (loading) {
     return <div className="report-container"><p>Loading report...</p></div>;
-  }
+        }
 
   const inspectionOptions = Object.values(InspectionResult);
   const reportTitle = isMTS 
@@ -439,7 +439,7 @@ const MediumVoltageCableVLFTestReport: React.FC<MediumVoltageCableVLFTestReportP
           <p className="neta-reference">{netaRef}</p>
         </div>
         <div className={`status-badge ${formData.status === 'PASS' ? 'status-pass' : 'status-fail'}`}>
-          {formData.status}
+            {formData.status}
         </div>
       </div>
 
@@ -467,7 +467,7 @@ const MediumVoltageCableVLFTestReport: React.FC<MediumVoltageCableVLFTestReportP
             </tr>
           </tbody>
         </table>
-      </div>
+        </div>
 
       {/* Cable Information */}
       <div className="report-section">
@@ -499,20 +499,20 @@ const MediumVoltageCableVLFTestReport: React.FC<MediumVoltageCableVLFTestReportP
             </tr>
           </tbody>
         </table>
-      </div>
+        </div>
 
       {/* Visual and Mechanical Inspection */}
       <div className="report-section">
         <div className="section-divider"></div>
         <h2 className="section-title">Visual and Mechanical Inspection</h2>
         <table className="data-table">
-          <thead>
-            <tr>
+            <thead>
+              <tr>
               <th>Inspection Item</th>
               <th>Result</th>
-            </tr>
-          </thead>
-          <tbody>
+              </tr>
+            </thead>
+            <tbody>
             <tr>
               <td>Inspect cables and connectors for physical damage</td>
               <td>
@@ -531,7 +531,7 @@ const MediumVoltageCableVLFTestReport: React.FC<MediumVoltageCableVLFTestReportP
             </tr>
             <tr>
               <td>Use ohmmeter to verify shield continuity</td>
-              <td>
+                  <td>
                 <select value={formData.visualInspection.useOhmmeter} onChange={(e) => handleNestedChange('visualInspection', 'useOhmmeter', e.target.value)} disabled={!isEditing} className="table-input">
                   {inspectionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
@@ -558,9 +558,9 @@ const MediumVoltageCableVLFTestReport: React.FC<MediumVoltageCableVLFTestReportP
               <td>
                 <select value={formData.visualInspection.inspectCurrentTransformers} onChange={(e) => handleNestedChange('visualInspection', 'inspectCurrentTransformers', e.target.value)} disabled={!isEditing} className="table-input">
                   {inspectionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
-              </td>
-            </tr>
+                    </select>
+                  </td>
+                </tr>
           </tbody>
         </table>
       </div>
@@ -579,25 +579,25 @@ const MediumVoltageCableVLFTestReport: React.FC<MediumVoltageCableVLFTestReportP
               <td className="label-cell">TCF:</td>
               <td><input type="text" value={formData.temperature.tcf.toFixed(3)} readOnly className="table-input formula-field" /></td>
             </tr>
-          </tbody>
-        </table>
-      </div>
+            </tbody>
+          </table>
+        </div>
 
       {/* Shield Continuity */}
       <div className="report-section">
         <div className="section-divider"></div>
         <h2 className="section-title">Electrical Tests - Shield Continuity</h2>
         <table className="data-table">
-          <thead>
+            <thead>
             <tr>
               <th>Phase A</th>
               <th>Phase B</th>
               <th>Phase C</th>
               <th>Unit</th>
             </tr>
-          </thead>
-          <tbody>
-            <tr>
+            </thead>
+            <tbody>
+              <tr>
               <td><input type="text" value={formData.shieldContinuity.phaseA} onChange={(e) => handleNestedChange('shieldContinuity', 'phaseA', e.target.value)} readOnly={!isEditing} className="table-input" /></td>
               <td><input type="text" value={formData.shieldContinuity.phaseB} onChange={(e) => handleNestedChange('shieldContinuity', 'phaseB', e.target.value)} readOnly={!isEditing} className="table-input" /></td>
               <td><input type="text" value={formData.shieldContinuity.phaseC} onChange={(e) => handleNestedChange('shieldContinuity', 'phaseC', e.target.value)} readOnly={!isEditing} className="table-input" /></td>
@@ -608,52 +608,52 @@ const MediumVoltageCableVLFTestReport: React.FC<MediumVoltageCableVLFTestReportP
                   <option value="μΩ">μΩ</option>
                 </select>
               </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
       {/* Insulation Resistance */}
       <div className="report-section">
         <div className="section-divider"></div>
         <h2 className="section-title">Electrical Tests - Insulation Resistance</h2>
         <table className="data-table" style={{ marginTop: '10px' }}>
-          <thead>
-            <tr>
-              <th></th>
+            <thead>
+              <tr>
+                <th></th>
               <th>A-G</th>
               <th>B-G</th>
               <th>C-G</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
               <td className="label-cell">Pre-Test</td>
               <td><input type="text" value={formData.insulationTest.preTest.ag} onChange={(e) => handleInsulationChange('preTest', 'ag', e.target.value)} readOnly={!isEditing} className="table-input" /></td>
               <td><input type="text" value={formData.insulationTest.preTest.bg} onChange={(e) => handleInsulationChange('preTest', 'bg', e.target.value)} readOnly={!isEditing} className="table-input" /></td>
               <td><input type="text" value={formData.insulationTest.preTest.cg} onChange={(e) => handleInsulationChange('preTest', 'cg', e.target.value)} readOnly={!isEditing} className="table-input" /></td>
-            </tr>
+              </tr>
             <tr>
               <td className="label-cell">Pre-Test Corrected</td>
               <td><input type="text" value={formData.insulationTest.preTestCorrected.ag} readOnly className="table-input formula-field" /></td>
               <td><input type="text" value={formData.insulationTest.preTestCorrected.bg} readOnly className="table-input formula-field" /></td>
               <td><input type="text" value={formData.insulationTest.preTestCorrected.cg} readOnly className="table-input formula-field" /></td>
-            </tr>
-            <tr>
+              </tr>
+              <tr>
               <td className="label-cell">Post-Test</td>
               <td><input type="text" value={formData.insulationTest.postTest.ag} onChange={(e) => handleInsulationChange('postTest', 'ag', e.target.value)} readOnly={!isEditing} className="table-input" /></td>
               <td><input type="text" value={formData.insulationTest.postTest.bg} onChange={(e) => handleInsulationChange('postTest', 'bg', e.target.value)} readOnly={!isEditing} className="table-input" /></td>
               <td><input type="text" value={formData.insulationTest.postTest.cg} onChange={(e) => handleInsulationChange('postTest', 'cg', e.target.value)} readOnly={!isEditing} className="table-input" /></td>
-            </tr>
-            <tr>
+              </tr>
+              <tr>
               <td className="label-cell">Post-Test Corrected</td>
               <td><input type="text" value={formData.insulationTest.postTestCorrected.ag} readOnly className="table-input formula-field" /></td>
               <td><input type="text" value={formData.insulationTest.postTestCorrected.bg} readOnly className="table-input formula-field" /></td>
               <td><input type="text" value={formData.insulationTest.postTestCorrected.cg} readOnly className="table-input formula-field" /></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
       {/* Withstand Test */}
       <div className="report-section">
@@ -753,7 +753,7 @@ const MediumVoltageCableVLFTestReport: React.FC<MediumVoltageCableVLFTestReportP
                   <td><input type="text" value={val.phaseB.stdDev} onChange={(e) => handleTanDeltaChange(index, 'phaseB', 'stdDev', e.target.value)} readOnly={!editingTanDelta && !isEditing} className="table-input" /></td>
                   <td><input type="text" value={val.phaseC.td} onChange={(e) => handleTanDeltaChange(index, 'phaseC', 'td', e.target.value)} readOnly={!editingTanDelta && !isEditing} className="table-input" /></td>
                   <td><input type="text" value={val.phaseC.stdDev} onChange={(e) => handleTanDeltaChange(index, 'phaseC', 'stdDev', e.target.value)} readOnly={!editingTanDelta && !isEditing} className="table-input" /></td>
-                </tr>
+              </tr>
               ))}
             </tbody>
           </table>

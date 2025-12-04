@@ -142,57 +142,87 @@ function LabeledInput({ label, value, onChange, readOnly = false, type = 'text',
   );
 }
 
+// Helper to ensure a value is an array
+const ensureArray = <T,>(val: any, defaultVal: T[]): T[] => {
+  if (Array.isArray(val)) return val;
+  if (val && typeof val === 'object' && Array.isArray(val.rows)) return val.rows;
+  return defaultVal;
+};
+
 export function VoltagePotentialTransformerMTSReport({ job, reportData, onSave }: Props) {
   const [formData, setFormData] = useState<FormData>(() => {
     const data = reportData || {};
+    const ri = data.report_info || {};
+    const dd = data.device_data || data.deviceData || {};
+    const vi = data.visual_inspection || data.visualMechanicalInspection || {};
+    const fd = data.fuse_data || data.fuseData || {};
+    const fr = data.fuse_resistance || data.fuseResistanceTest || {};
+    const ir = data.insulation_resistance || data.insulationResistance;
+    const tr = data.turns_ratio || data.turnsRatioTest;
+    const eq = data.equipment_used || data.testEquipmentUsed || {};
+
+    // Build visual inspection array from object if needed
+    let visualItems: Array<{ netaSection: string; description: string; result: string }>;
+    if (Array.isArray(vi)) {
+      visualItems = vi;
+    } else if (typeof vi === 'object' && Object.keys(vi).length > 0) {
+      // Convert object { '7.10.2.1': 'Pass', ... } to array format
+      visualItems = INITIAL_VISUAL_INSPECTION_ITEMS.map(item => ({
+        ...item,
+        result: vi[item.netaSection] || item.result
+      }));
+    } else {
+      visualItems = INITIAL_VISUAL_INSPECTION_ITEMS;
+    }
+
     return {
-      customerName: data.customerName || job?.customer_name || '',
-      customerAddress: data.customerAddress || '',
-      userName: data.userName || '',
-      date: data.date || new Date().toISOString().split('T')[0],
-      identifier: data.identifier || '',
-      jobNumber: data.jobNumber || job?.job_number || '',
-      technicians: data.technicians || '',
+      customerName: data.customerName || ri.customer || job?.customer_name || '',
+      customerAddress: data.customerAddress || ri.address || '',
+      userName: data.userName || ri.user || '',
+      date: data.date || ri.date || new Date().toISOString().split('T')[0],
+      identifier: data.identifier || ri.identifier || '',
+      jobNumber: data.jobNumber || ri.jobNumber || job?.job_number || '',
+      technicians: data.technicians || ri.technicians || '',
       temperature: {
-        fahrenheit: data.temperature?.fahrenheit ?? 76,
-        celsius: data.temperature?.celsius ?? 24,
+        fahrenheit: data.temperature?.fahrenheit ?? ri.temperature ?? 76,
+        celsius: data.temperature?.celsius ?? Math.round(((ri.temperature || 76) - 32) * 5 / 9),
         tcf: data.temperature?.tcf ?? 1.2,
-        humidity: data.temperature?.humidity ?? 0
+        humidity: data.temperature?.humidity ?? ri.humidity ?? 0
       },
-      substation: data.substation || '',
-      eqptLocation: data.eqptLocation || '',
+      substation: data.substation || ri.substation || '',
+      eqptLocation: data.eqptLocation || ri.eqptLocation || '',
       deviceData: {
-        manufacturer: data.deviceData?.manufacturer || '',
-        catalogNumber: data.deviceData?.catalogNumber || '',
-        serialNumber: data.deviceData?.serialNumber || '',
-        accuracyClass: data.deviceData?.accuracyClass || '',
-        manufacturedYear: data.deviceData?.manufacturedYear || '',
-        voltageRating: data.deviceData?.voltageRating || '',
-        insulationClass: data.deviceData?.insulationClass || '',
-        frequency: data.deviceData?.frequency || ''
+        manufacturer: dd.manufacturer || '',
+        catalogNumber: dd.catalogNumber || dd.catalogNo || '',
+        serialNumber: dd.serialNumber || '',
+        accuracyClass: dd.accuracyClass || '',
+        manufacturedYear: dd.manufacturedYear || '',
+        voltageRating: dd.voltageRating || '',
+        insulationClass: dd.insulationClass || '',
+        frequency: dd.frequency || ''
       },
-      visualMechanicalInspection: data.visualMechanicalInspection || INITIAL_VISUAL_INSPECTION_ITEMS,
+      visualMechanicalInspection: visualItems,
       fuseData: {
-        manufacturer: data.fuseData?.manufacturer || '',
-        catalogNumber: data.fuseData?.catalogNumber || '',
-        class: data.fuseData?.class || '',
-        voltageRatingKv: data.fuseData?.voltageRatingKv || '',
-        ampacityA: data.fuseData?.ampacityA || '',
-        icRatingKa: data.fuseData?.icRatingKa || ''
+        manufacturer: fd.manufacturer || '',
+        catalogNumber: fd.catalogNumber || fd.catalogNo || '',
+        class: fd.class || '',
+        voltageRatingKv: fd.voltageRatingKv || fd.voltageRating || '',
+        ampacityA: fd.ampacityA || fd.ampacity || '',
+        icRatingKa: fd.icRatingKa || fd.icRating || ''
       },
       fuseResistanceTest: {
-        asFound: data.fuseResistanceTest?.asFound || '',
-        asLeft: data.fuseResistanceTest?.asLeft || '',
-        units: data.fuseResistanceTest?.units || 'µΩ'
+        asFound: fr.asFound || '',
+        asLeft: fr.asLeft || '',
+        units: fr.units || 'µΩ'
       },
-      insulationResistance: data.insulationResistance || INITIAL_INSULATION_RESISTANCE_ITEMS,
-      secondaryVoltageAsFoundTap: data.secondaryVoltageAsFoundTap || '120',
+      insulationResistance: ensureArray(ir, INITIAL_INSULATION_RESISTANCE_ITEMS),
+      secondaryVoltageAsFoundTap: data.secondaryVoltageAsFoundTap || tr?.secondaryVoltage || '120',
       revenueMetering: data.revenueMetering ?? true,
-      turnsRatioTest: data.turnsRatioTest || INITIAL_TURNS_RATIO_TEST,
+      turnsRatioTest: ensureArray(tr, INITIAL_TURNS_RATIO_TEST),
       testEquipmentUsed: {
-        megohmmeter: data.testEquipmentUsed?.megohmmeter || { name: '', serialNumber: '', ampId: '' },
-        lowResistanceOhmmeter: data.testEquipmentUsed?.lowResistanceOhmmeter || { name: '', serialNumber: '', ampId: '' },
-        ttrTestSet: data.testEquipmentUsed?.ttrTestSet || { name: '', serialNumber: '', ampId: '' }
+        megohmmeter: eq.megohmmeter || { name: '', serialNumber: '', ampId: '' },
+        lowResistanceOhmmeter: eq.lowResistanceOhmmeter || eq.lowResOhmmeter || { name: '', serialNumber: '', ampId: '' },
+        ttrTestSet: eq.ttrTestSet || { name: '', serialNumber: '', ampId: '' }
       },
       comments: data.comments || '',
       status: data.status || 'PASS'
@@ -217,10 +247,12 @@ export function VoltagePotentialTransformerMTSReport({ job, reportData, onSave }
   useEffect(() => {
     setFormData(prev => ({
       ...prev,
-      insulationResistance: prev.insulationResistance.map(item => ({
-        ...item,
-        correctedResults: calculateTempCorrectedReading(item.results, prev.temperature.tcf)
-      }))
+      insulationResistance: Array.isArray(prev.insulationResistance) 
+        ? prev.insulationResistance.map(item => ({
+            ...item,
+            correctedResults: calculateTempCorrectedReading(item.results, prev.temperature.tcf)
+          }))
+        : INITIAL_INSULATION_RESISTANCE_ITEMS
     }));
   }, [formData.temperature.tcf]);
 

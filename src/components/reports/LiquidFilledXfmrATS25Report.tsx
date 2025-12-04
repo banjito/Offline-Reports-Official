@@ -225,17 +225,20 @@ const LiquidFilledXfmrATS25Report: React.FC<LiquidFilledXfmrATS25ReportProps> = 
   // Auto-calculate corrected values when temperature or measured values change
   useEffect(() => {
     const tcf = getTCF(formData.temperature.celsius);
-    setFormData(prev => ({
-      ...prev,
-      temperature: { ...prev.temperature, tcf },
-      insulationRows: prev.insulationRows.map(row => ({
-        ...row,
-        corrected05Min: row.measured05Min ? (parseFloat(row.measured05Min) * tcf).toFixed(2) : '',
-        corrected1Min: row.measured1Min ? (parseFloat(row.measured1Min) * tcf).toFixed(2) : '',
-        corrected10Min: row.measured10Min ? (parseFloat(row.measured10Min) * tcf).toFixed(2) : ''
-      }))
-    }));
-  }, [formData.temperature.celsius, formData.insulationRows.map(r => r.measured05Min + r.measured1Min + r.measured10Min).join(',')]);
+    setFormData(prev => {
+      const rows = Array.isArray(prev.insulationRows) ? prev.insulationRows : initialFormData.insulationRows;
+      return {
+        ...prev,
+        temperature: { ...prev.temperature, tcf },
+        insulationRows: rows.map(row => ({
+          ...row,
+          corrected05Min: row.measured05Min ? (parseFloat(row.measured05Min) * tcf).toFixed(2) : '',
+          corrected1Min: row.measured1Min ? (parseFloat(row.measured1Min) * tcf).toFixed(2) : '',
+          corrected10Min: row.measured10Min ? (parseFloat(row.measured10Min) * tcf).toFixed(2) : ''
+        }))
+      };
+    });
+  }, [formData.temperature.celsius, (formData.insulationRows || []).map(r => r.measured05Min + r.measured1Min + r.measured10Min).join(',')]);
 
   const loadFromProps = (data: any) => {
     const reportInfo = data.report_info || {};
@@ -311,12 +314,54 @@ const LiquidFilledXfmrATS25Report: React.FC<LiquidFilledXfmrATS25ReportProps> = 
     setFormData(prev => ({ ...prev, insulationRows: newRows }));
   };
 
+  const handleSaveReport = () => {
+    if (onSave) {
+      const savePayload = {
+        ...formData,
+        report_info: {
+          customer: formData.customerName,
+          address: formData.customerLocation,
+          jobNumber: formData.jobNumber,
+          identifier: formData.identifier,
+          technicians: formData.technicians,
+          date: formData.date,
+          substation: formData.substation,
+          eqptLocation: formData.eqptLocation,
+          temperature: formData.temperature,
+          status: formData.status
+        },
+        nameplate_data: formData.nameplate,
+        visual_inspection_items: formData.visualInspectionItems,
+        indicator_gauge_values: formData.indicatorGaugeValues,
+        insulation_resistance: {
+          rows: formData.insulationRows,
+          dielectricAbsorption: formData.dielectricAbsorption,
+          polarizationIndex: formData.polarizationIndex
+        },
+        test_equipment_used: formData.testEquipment,
+        comments: formData.comments
+      };
+      onSave(savePayload);
+      console.log('📝 Report saved:', savePayload);
+    }
+  };
+
   if (loading) {
     return <div className="report-container"><p>Loading report...</p></div>;
   }
 
   return (
     <div className="report-container">
+      {/* Save Button Bar */}
+      {isEditing && onSave && (
+        <div className="report-action-bar">
+          <button onClick={handleSaveReport} className="btn-save-report">
+            💾 Save Report
+          </button>
+          <span className="save-hint">Click to save changes locally. Use "Sync to Database" in app header to upload.</span>
+        </div>
+      )}
+
       {/* Print Header */}
       <div className="print-header">
         <img 

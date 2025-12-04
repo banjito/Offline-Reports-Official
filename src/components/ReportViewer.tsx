@@ -66,6 +66,9 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
   const [reportType, setReportType] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
 
   useEffect(() => {
     if (jobId && reportId) {
@@ -501,6 +504,8 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
 
   const handleSave = async (updatedData: any) => {
     try {
+      setIsSaving(true);
+      
       // Update the report in local database
       const updatedReport = {
         ...report,
@@ -513,14 +518,25 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
 
       if (result.success) {
         setReport(updatedReport);
-        // TODO: Add to sync queue for upload to Supabase
-        console.log('Report saved locally');
+        setHasUnsavedChanges(false);
+        setLastSaveTime(new Date().toLocaleTimeString());
+        console.log('✅ Report saved locally and marked for sync');
+        
+        // Show brief success message
+        const saveMsg = document.getElementById('save-message');
+        if (saveMsg) {
+          saveMsg.textContent = '✓ Saved! Click "Sync to Database" in the header to upload.';
+          saveMsg.style.display = 'block';
+          setTimeout(() => { saveMsg.style.display = 'none'; }, 3000);
+        }
       } else {
         throw new Error(result.error || 'Failed to save report');
       }
     } catch (err: any) {
       console.error('Failed to save report:', err);
       alert(`Failed to save report: ${err.message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -564,10 +580,19 @@ export function ReportViewer({ jobId: propJobId, reportId: propReportId }: Repor
       <div className="report-header">
         <button onClick={() => navigate('/')} className="back-button">
           ← Back to Jobs
-          </button>
+        </button>
         <div className="report-info">
           <h1>{report.title || `Report ${reportId?.substring(0, 8)}`}</h1>
           <span className="report-type">{reportType.replace(/-/g, ' ').toUpperCase()}</span>
+        </div>
+        <div className="report-save-status">
+          {lastSaveTime && (
+            <span className="last-saved">Last saved: {lastSaveTime}</span>
+          )}
+          {report.is_dirty === 1 && (
+            <span className="sync-pending">⏳ Pending sync to database</span>
+          )}
+          <span id="save-message" className="save-message" style={{ display: 'none' }}></span>
         </div>
       </div>
 

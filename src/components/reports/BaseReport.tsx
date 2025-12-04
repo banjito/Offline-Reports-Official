@@ -368,11 +368,22 @@ interface VisualInspectionSectionProps {
 }
 
 export function VisualInspectionSection({ items, onChange, isEditing, netaSection }: VisualInspectionSectionProps) {
+  // Ensure items is always an array
+  const safeItems = Array.isArray(items) ? items : [];
+  
   const updateItem = (index: number, field: keyof VisualInspectionItem, value: string) => {
-    const newItems = [...items];
+    const newItems = [...safeItems];
     newItems[index] = { ...newItems[index], [field]: value };
     onChange(newItems);
   };
+
+  if (safeItems.length === 0) {
+    return (
+      <ReportSection title="Visual and Mechanical Inspection" subtitle={netaSection ? `Per NETA ATS Section ${netaSection}` : undefined}>
+        <p className="text-gray-500">No visual inspection items available.</p>
+      </ReportSection>
+    );
+  }
 
   return (
     <ReportSection title="Visual and Mechanical Inspection" subtitle={netaSection ? `Per NETA ATS Section ${netaSection}` : undefined}>
@@ -387,7 +398,7 @@ export function VisualInspectionSection({ items, onChange, isEditing, netaSectio
             </tr>
           </thead>
           <tbody>
-            {items.map((item, idx) => (
+            {safeItems.map((item, idx) => (
               <tr key={item.id || idx}>
                 <td>{item.id || idx + 1}</td>
                 <td>{item.description}</td>

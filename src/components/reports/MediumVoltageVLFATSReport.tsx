@@ -537,7 +537,7 @@ const MediumVoltageVLFATSReport: React.FC<MediumVoltageVLFATSReportProps> = ({
             <tr>
               <td>7.3.3.A.5</td>
               <td>Inspect shield grounding, cable support, and fireproofing</td>
-              <td>
+                  <td>
                 <select value={formData.visualInspection.inspectGrounding} onChange={(e) => handleNestedChange('visualInspection', 'inspectGrounding', e.target.value)} disabled={!isEditing} className="table-input">
                   {inspectionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
